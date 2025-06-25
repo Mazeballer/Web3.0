@@ -4,8 +4,6 @@ Welcome to **Web3.0**, a Progressive Web App for transparent, peer‑to‑peer l
 
 ## 🚀 Getting Started
 
-These instructions will get your colleagues up and running quickly after cloning the repo.
-
 ### 1. Clone the Repository
 
 ```bash
