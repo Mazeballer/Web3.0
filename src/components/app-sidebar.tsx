@@ -1,9 +1,19 @@
-"use client"
+'use client'
 
-import { Home, CreditCard, Banknote, TrendingUp, History, Moon, Sun, Wallet } from "lucide-react"
-import { useTheme } from "next-themes"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import React, { useState, useEffect } from 'react'
+import {
+  Home,
+  CreditCard,
+  Banknote,
+  TrendingUp,
+  History,
+  Moon,
+  Sun,
+  Wallet as WalletIcon,
+} from 'lucide-react'
+import { useTheme } from 'next-themes'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 import {
   Sidebar,
@@ -17,42 +27,30 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-} from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
-import { useWallet } from "@/components/wallet-provider"
+  SidebarInset,
+  SidebarProvider,
+} from '@/components/ui/sidebar'
+import { Button } from '@/components/ui/button'
+import { useWallet } from '@/components/wallet-provider'
 
 const items = [
-  {
-    title: "Dashboard",
-    url: "/app",
-    icon: Home,
-  },
-  {
-    title: "Borrow",
-    url: "/app/borrow",
-    icon: CreditCard,
-  },
-  {
-    title: "Lend",
-    url: "/app/lend",
-    icon: Banknote,
-  },
-  {
-    title: "Credit Score",
-    url: "/app/credit-score",
-    icon: TrendingUp,
-  },
-  {
-    title: "Loan History",
-    url: "/app/loan-history",
-    icon: History,
-  },
+  { title: 'Dashboard',     url: '/app',            icon: Home       },
+  { title: 'Borrow',        url: '/app/borrow',     icon: CreditCard },
+  { title: 'Lend',          url: '/app/lend',       icon: Banknote   },
+  { title: 'Credit Score',  url: '/app/credit-score', icon: TrendingUp },
+  { title: 'Loan History',  url: '/app/loan-history', icon: History    },
 ]
 
 export function AppSidebar() {
   const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
   const { isConnected, address, connectWallet, disconnectWallet } = useWallet()
+
+  // only run on client
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     <Sidebar variant="inset" className="border-r border-border/50">
@@ -72,7 +70,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {items.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -99,13 +97,21 @@ export function AppSidebar() {
               <div className="text-sm font-mono bg-muted/50 p-2 rounded-md">
                 {address?.slice(0, 6)}...{address?.slice(-4)}
               </div>
-              <Button variant="outline" size="sm" onClick={disconnectWallet} className="w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={disconnectWallet}
+                className="w-full"
+              >
                 Disconnect
               </Button>
             </div>
           ) : (
-            <Button onClick={connectWallet} className="w-full gradient-primary text-white hover:opacity-90">
-              <Wallet className="h-4 w-4 mr-2" />
+            <Button
+              onClick={connectWallet}
+              className="w-full gradient-primary text-white hover:opacity-90"
+            >
+              <WalletIcon className="h-4 w-4 mr-2" />
               Connect Wallet
             </Button>
           )}
@@ -113,11 +119,17 @@ export function AppSidebar() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="w-full"
           >
-            {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
-            {theme === "dark" ? "Light" : "Dark"} Mode
+            {mounted && (
+              theme === 'dark'
+                ? <Sun  className="h-4 w-4 mr-2" />
+                : <Moon className="h-4 w-4 mr-2" />
+            )}
+            {mounted
+              ? (theme === 'dark' ? 'Light' : 'Dark') + ' Mode'
+              : 'Toggle Theme'}
           </Button>
         </div>
       </SidebarFooter>
