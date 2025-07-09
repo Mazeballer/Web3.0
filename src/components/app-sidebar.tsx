@@ -33,11 +33,11 @@ import { useAccount, useDisconnect } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 
 const items = [
-  { title: 'Dashboard', url: '/app', icon: Home },
-  { title: 'Borrow', url: '/app/borrow', icon: CreditCard },
-  { title: 'Lend', url: '/app/lend', icon: Banknote },
-  { title: 'Credit Score', url: '/app/credit-score', icon: TrendingUp },
-  { title: 'Loan History', url: '/app/loan-history', icon: History },
+  { title: 'Dashboard', url: '/dashboard', icon: Home },
+  { title: 'Borrow', url: '/dashboard/borrow', icon: CreditCard },
+  { title: 'Lend', url: '/dashboard/lend', icon: Banknote },
+  { title: 'Credit Score', url: '/dashboard/credit-score', icon: TrendingUp },
+  { title: 'Loan History', url: '/dashboard/loan-history', icon: History },
 ];
 
 export function AppSidebar() {
