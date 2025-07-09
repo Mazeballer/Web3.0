@@ -1,23 +1,14 @@
-import type React from 'react';
-import type { Metadata } from 'next';
+// app/layout.tsx
+import type { ReactNode } from 'react';
 import { Inter } from 'next/font/google';
 import './globals.css';
+
 import { ThemeProvider } from '@/components/theme-provider';
-import { WalletProvider } from '@/components/wallet-provider';
-import { Toaster } from '@/components/ui/toaster';
+import { Providers } from '@/components/providers';
 
 const inter = Inter({ subsets: ['latin'] });
 
-export const metadata: Metadata = {
-  title: 'DeFiLend - Decentralized Lending Platform',
-  description: 'Modern decentralized lending and borrowing platform',
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -27,10 +18,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <WalletProvider>
-            {children}
-            <Toaster />
-          </WalletProvider>
+          <Providers>{children}</Providers>
         </ThemeProvider>
       </body>
     </html>

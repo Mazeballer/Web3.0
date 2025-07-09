@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 import {
   Home,
   CreditCard,
@@ -9,11 +9,10 @@ import {
   History,
   Moon,
   Sun,
-  Wallet as WalletIcon,
-} from 'lucide-react'
-import { useTheme } from 'next-themes'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+} from 'lucide-react';
+import { useTheme } from 'next-themes';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 import {
   Sidebar,
@@ -27,30 +26,31 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarInset,
-  SidebarProvider,
-} from '@/components/ui/sidebar'
-import { Button } from '@/components/ui/button'
-import { useWallet } from '@/components/wallet-provider'
+} from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+
+import { useAccount, useDisconnect } from 'wagmi';
+import { useAppKit } from '@reown/appkit/react';
 
 const items = [
-  { title: 'Dashboard',     url: '/app',            icon: Home       },
-  { title: 'Borrow',        url: '/app/borrow',     icon: CreditCard },
-  { title: 'Lend',          url: '/app/lend',       icon: Banknote   },
-  { title: 'Credit Score',  url: '/app/credit-score', icon: TrendingUp },
-  { title: 'Loan History',  url: '/app/loan-history', icon: History    },
-]
+  { title: 'Dashboard', url: '/app', icon: Home },
+  { title: 'Borrow', url: '/app/borrow', icon: CreditCard },
+  { title: 'Lend', url: '/app/lend', icon: Banknote },
+  { title: 'Credit Score', url: '/app/credit-score', icon: TrendingUp },
+  { title: 'Loan History', url: '/app/loan-history', icon: History },
+];
 
 export function AppSidebar() {
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  const pathname = usePathname()
-  const { isConnected, address, connectWallet, disconnectWallet } = useWallet()
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
+  const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { open } = useAppKit();
 
-  // only run on client
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   return (
     <Sidebar variant="inset" className="border-r border-border/50">
@@ -70,14 +70,14 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map(item => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
                     isActive={pathname === item.url}
                     className="hover:bg-accent/50 transition-colors"
                   >
-                    <Link href={item.url}>
+                    <Link href={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -93,14 +93,16 @@ export function AppSidebar() {
         <div className="space-y-3">
           {isConnected ? (
             <div className="space-y-2">
-              <div className="text-xs text-muted-foreground">Connected Wallet</div>
+              <div className="text-xs text-muted-foreground">
+                Connected Wallet
+              </div>
               <div className="text-sm font-mono bg-muted/50 p-2 rounded-md">
-                {address?.slice(0, 6)}...{address?.slice(-4)}
+                {address?.slice(0, 6)}…{address?.slice(-4)}
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={disconnectWallet}
+                onClick={() => disconnect()}
                 className="w-full"
               >
                 Disconnect
@@ -108,10 +110,9 @@ export function AppSidebar() {
             </div>
           ) : (
             <Button
-              onClick={connectWallet}
+              onClick={() => open()}
               className="w-full gradient-primary text-white hover:opacity-90"
             >
-              <WalletIcon className="h-4 w-4 mr-2" />
               Connect Wallet
             </Button>
           )}
@@ -122,11 +123,12 @@ export function AppSidebar() {
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="w-full"
           >
-            {mounted && (
-              theme === 'dark'
-                ? <Sun  className="h-4 w-4 mr-2" />
-                : <Moon className="h-4 w-4 mr-2" />
-            )}
+            {mounted &&
+              (theme === 'dark' ? (
+                <Sun className="h-4 w-4 mr-2" />
+              ) : (
+                <Moon className="h-4 w-4 mr-2" />
+              ))}
             {mounted
               ? (theme === 'dark' ? 'Light' : 'Dark') + ' Mode'
               : 'Toggle Theme'}
@@ -136,5 +138,5 @@ export function AppSidebar() {
 
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

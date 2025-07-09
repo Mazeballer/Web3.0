@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import {
   Card,
   CardContent,
@@ -10,19 +11,32 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { useWallet } from '@/components/wallet-provider';
+
 import {
-  Wallet,
+  Wallet as WalletIcon,
   TrendingUp,
-  DollarSign,
   Shield,
   ArrowUpRight,
   ArrowDownRight,
+  DollarSign,
   Activity,
 } from 'lucide-react';
 
+import { useAppKit } from '@reown/appkit/react';
+import { useAccount, useBalance } from 'wagmi';
+
 export default function Dashboard() {
-  const { isConnected, address, balance, connectWallet } = useWallet();
+  // wagmi hooks
+  const { address, isConnected } = useAccount();
+  const { data: balanceData } = useBalance({ address });
+
+  // appkit hook
+  const { open } = useAppKit();
+
+  // format balance to 4 decimals
+  const balance = balanceData
+    ? parseFloat(balanceData.formatted).toFixed(4)
+    : '0.0000';
 
   const mockData = {
     trustScore: 750,
@@ -41,27 +55,25 @@ export default function Dashboard() {
       {/* Hero Section */}
       <div className="relative overflow-hidden rounded-2xl gradient-card p-8 md:p-12">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-indigo-600/10" />
-        <div className="relative z-10">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              Welcome to DeFiLend
-            </h1>
-            <p className="text-lg text-muted-foreground mb-6">
-              The next-generation decentralized lending platform. Borrow and
-              lend crypto assets with dynamic interest rates based on your trust
-              score.
-            </p>
-            {!isConnected && (
-              <Button
-                onClick={connectWallet}
-                size="lg"
-                className="gradient-primary text-white hover:opacity-90 animate-glow"
-              >
-                <Wallet className="h-5 w-5 mr-2" />
-                Connect Wallet to Get Started
-              </Button>
-            )}
-          </div>
+        <div className="relative z-10 max-w-2xl">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            Welcome to DeFiLend
+          </h1>
+          <p className="text-lg text-muted-foreground mb-6">
+            The next-generation decentralized lending platform. Borrow and lend
+            crypto assets with dynamic interest rates based on your trust score.
+          </p>
+
+          {!isConnected && (
+            <Button
+              onClick={() => open()}
+              size="lg"
+              className="gradient-primary text-white hover:opacity-90 animate-glow"
+            >
+              <WalletIcon className="h-5 w-5 mr-2" />
+              Connect Wallet
+            </Button>
+          )}
         </div>
       </div>
 
@@ -69,12 +81,13 @@ export default function Dashboard() {
         <>
           {/* Overview Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Wallet Balance */}
             <Card className="gradient-card hover:shadow-lg transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
                   Wallet Balance
                 </CardTitle>
-                <Wallet className="h-4 w-4 text-muted-foreground" />
+                <WalletIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{balance} ETH</div>
@@ -84,8 +97,9 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
+            {/* Trust Score */}
             <Card className="gradient-card hover:shadow-lg transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
                   Trust Score
                 </CardTitle>
@@ -105,8 +119,9 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
+            {/* Total Borrowed */}
             <Card className="gradient-card hover:shadow-lg transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
                   Total Borrowed
                 </CardTitle>
@@ -122,8 +137,9 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
+            {/* Total Lent */}
             <Card className="gradient-card hover:shadow-lg transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
                   Total Lent
                 </CardTitle>
@@ -195,36 +211,34 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockData.recentActivity.map((activity, index) => (
+                {mockData.recentActivity.map((act, idx) => (
                   <div
-                    key={index}
+                    key={idx}
                     className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
                   >
                     <div className="flex items-center gap-3">
-                      {activity.type === 'lend' ? (
+                      {act.type === 'lend' ? (
                         <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                      ) : activity.type === 'borrow' ? (
+                      ) : act.type === 'borrow' ? (
                         <ArrowDownRight className="h-4 w-4 text-red-500" />
                       ) : (
                         <DollarSign className="h-4 w-4 text-blue-500" />
                       )}
                       <div>
-                        <div className="font-medium capitalize">
-                          {activity.type}
-                        </div>
+                        <div className="font-medium capitalize">{act.type}</div>
                         <div className="text-sm text-muted-foreground">
-                          {activity.date}
+                          {act.date}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="font-medium">
-                        {activity.amount} {activity.token}
+                        {act.amount} {act.token}
                       </div>
                       <Badge variant="outline" className="text-xs">
-                        {activity.type === 'lend'
+                        {act.type === 'lend'
                           ? 'Completed'
-                          : activity.type === 'borrow'
+                          : act.type === 'borrow'
                           ? 'Active'
                           : 'Paid'}
                       </Badge>
@@ -238,18 +252,17 @@ export default function Dashboard() {
       ) : (
         <Card className="gradient-card text-center p-12">
           <CardContent>
-            <Wallet className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+            <WalletIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-xl font-semibold mb-2">Connect Your Wallet</h3>
             <p className="text-muted-foreground mb-6">
               Connect your MetaMask wallet to access lending and borrowing
               features
             </p>
             <Button
-              onClick={connectWallet}
-              size="lg"
+              onClick={() => open()}
               className="gradient-primary text-white hover:opacity-90"
             >
-              <Wallet className="h-5 w-5 mr-2" />
+              <WalletIcon className="h-5 w-5 mr-2" />
               Connect Wallet
             </Button>
           </CardContent>
