@@ -195,16 +195,17 @@ export default function LandingPage() {
               next generation of crypto users.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button
-                size="lg"
-                className="gradient-primary text-white hover:opacity-90 animate-glow text-lg px-8 py-6"
-                asChild
-              >
-                <Link href="/auth/signin">
-                  Start Earning Today
-                  <ArrowRight className="h-5 w-5 ml-2" />
-                </Link>
-              </Button>
+              {!session?.user ? (
+                <Button
+                  size="lg"
+                  className="gradient-primary text-white hover:opacity-90 animate-glow text-lg px-8 py-6"
+                >
+                  <Link href="/auth/signin" className="flex items-center">
+                    Start Earning Today
+                    <ArrowRight className="h-5 w-4 ml-2" />
+                  </Link>
+                </Button>
+              ) : null}
               <Button size="lg" variant="outline" className="text-lg px-8 py-6">
                 View Documentation
               </Button>
