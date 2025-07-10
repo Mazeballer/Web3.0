@@ -55,28 +55,23 @@ export default function LoginPage() {
   }, [isHydrated, searchParams]);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      toast.error("Please fill in all fields.");
-      return;
-    }
-
-    setIsLoading(true);
-    console.log("Starting login process...");
-
     try {
+      // Sign in with credentials
       const res = await signIn("credentials", {
         email,
         password,
-        redirect: false,
-        callbackUrl: "/dashboard",
+        redirect: false, // Don't let NextAuth handle the redirect
+        callbackUrl: "/dashboard", // Still define where you want to go
       });
 
       console.log("SignIn response:", res);
 
       if (res?.error) {
+        // If there's an error, show it
         console.log("Login error:", res.error);
         toast.error("Invalid email or password.");
       } else if (res?.ok) {
+        // If sign-in is successful, redirect to dashboard
         router.push("/dashboard");
       } else {
         console.log("Unexpected response:", res);
@@ -93,6 +88,7 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     try {
+      // Sign in with Google
       await signIn("google", { callbackUrl: "/dashboard" });
     } catch (error) {
       console.error(error);
