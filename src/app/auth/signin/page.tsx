@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
-import { toast } from "sonner";
+// import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
+
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -21,6 +23,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const [isHydrated, setIsHydrated] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     setIsHydrated(true);
@@ -38,13 +41,21 @@ export default function LoginPage() {
     // Show toast with slight delay to ensure Sonner is ready
     setTimeout(() => {
       if (error === "GoogleSignInNotAllowed") {
-        toast.error("This account is not registered for Google Sign-In.");
+        toast({
+          title: "Error",
+          description: "This account is not registered for Google Sign-In.",
+        });
       } else if (error === "OAuthAccountNotLinked") {
-        toast.error(
-          "This email is registered with a different sign-in method."
-        );
+        toast({
+          title: "Error",
+          description:
+            "This email is registered with a different sign-in method.",
+        });
       } else if (error === "NotRegisteredForGoogle") {
-        toast.error("This email is not registered.");
+        toast({
+          title: "Error",
+          description: "This email is not registered.",
+        });
       }
     }, 100); // small delay ensures Sonner has mounted
 
@@ -69,17 +80,26 @@ export default function LoginPage() {
       if (res?.error) {
         // If there's an error, show it
         console.log("Login error:", res.error);
-        toast.error("Invalid email or password.");
+        toast({
+          title: "Incorrect Credentials",
+          description: "Invalid email or password",
+        });
       } else if (res?.ok) {
         // If sign-in is successful, redirect to dashboard
         router.push("/dashboard");
       } else {
         console.log("Unexpected response:", res);
-        toast.error("Something went wrong. Please try again.");
+        toast({
+          title: "Error",
+          description: "Something went wrong. Please try again.",
+        });
       }
     } catch (error) {
       console.error("Login catch error:", error);
-      toast.error("An error occurred during sign in.");
+      toast({
+        title: "Error",
+        description: "An error occurred during sign in.",
+      });
     } finally {
       console.log("Setting loading to false");
       setIsLoading(false);

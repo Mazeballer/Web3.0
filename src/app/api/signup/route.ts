@@ -34,7 +34,6 @@ export async function POST(req: Request) {
 
         const idFile = data.idFile as string; // ❗ If sending as URL, else handle separately
 
-
         // Check for existing user
         const existingUser = await prisma.user.findUnique({
             where: { email },
@@ -71,6 +70,15 @@ export async function POST(req: Request) {
                 risk_tolerance: riskTolerance,
                 agree,
                 google_signin: googleSignin, // set true if signup with Google
+            },
+        });
+
+        // Create an initial credit score entry (default to 600 or any other value you prefer)
+        await prisma.creditScore.create({
+            data: {
+                user_id: user.id,  // Use the user's ID here
+                score: 0,           // Default score for new users
+                computed_at: new Date(),
             },
         });
 

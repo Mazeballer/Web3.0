@@ -6,7 +6,8 @@ import { signIn, useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+// import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { LogIn } from "lucide-react";
 import Email from "next-auth/providers/email";
 
@@ -17,6 +18,7 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -73,10 +75,13 @@ export default function SignUpPage() {
 
   const handleGoogleSignUp = async () => {
     try {
-      await signIn("google");
+      await signIn("google", { callbackUrl: "/dashboard" });
     } catch (error) {
       console.error(error);
-      toast.error("Google sign-in failed.");
+      toast({
+        title: "Error",
+        description: "Google sign-in failed.",
+      });
       localStorage.removeItem("pending_google_signup");
     }
   };
@@ -90,17 +95,22 @@ export default function SignUpPage() {
         (!formData.google_signin &&
           (!formData.password || !formData.confirmPassword))
       ) {
-        toast.error("Please fill in all required fields.");
+        toast({
+          title: "Reminder",
+          description: "Please fill in all required fields.",
+        });
         return;
       }
     }
     setStep(step + 1);
-    toast.success(`Moved to Step ${step + 1}`);
   };
 
   const handleCreateAccount = async () => {
     if (!formData.agree) {
-      toast.error("You must agree to the Terms and Privacy Policy.");
+      toast({
+        title: "Reminder",
+        description: "You must agree to the Terms and Privacy Policy.",
+      });
       return;
     }
     setIsLoading(true);
@@ -119,17 +129,25 @@ export default function SignUpPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        toast.error(errorData.message || "Account creation failed.");
+        toast({
+          title: "Error",
+          description: "Account creation failed.",
+        });
         return;
       }
-
-      toast.success("Account created successfully!");
+      toast({
+        title: "Success",
+        description: "Account created successfully!",
+      });
       setTimeout(() => {
         router.push("/auth/signin");
-      }, 1000);
+      }, 100);
     } catch (error) {
       console.error(error);
-      toast.error("Account creation failed.");
+      toast({
+        title: "Error",
+        description: "Account creation failed.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -137,8 +155,10 @@ export default function SignUpPage() {
 
   async function handleUploadKycDocument(file: File, email: string) {
     try {
-      toast.loading("Uploading ID document...");
-
+      toast({
+        title: "Loading",
+        description: "Uploading ID document...",
+      });
       const formDataToUpload = new FormData();
       formDataToUpload.append("file", file);
       formDataToUpload.append("email", email);
@@ -150,15 +170,19 @@ export default function SignUpPage() {
 
       if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
-
-      toast.success("Document uploaded successfully!");
+      toast({
+        title: "Success",
+        description: "Document uploaded successfully!",
+      });
       return data.publicUrl;
     } catch (error) {
       console.error(error);
-      toast.error("Failed to upload document.");
+      toast({
+        title: "Error",
+        description: "Failed to upload document.",
+      });
       return null;
     } finally {
-      toast.dismiss();
     }
   }
 

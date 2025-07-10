@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import {
   Card,
@@ -94,8 +95,13 @@ const testimonials = [
 ];
 
 export default function LandingPage() {
+  const { data: session } = useSession();
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+
+  const logout = async () => {
+    await signOut({ redirect: true, callbackUrl: "/auth/signin" }); // Optional redirect
+  };
 
   useEffect(() => {
     setIsHydrated(true);
@@ -143,19 +149,28 @@ export default function LandingPage() {
                 Community
               </Link>
             </div>
+
             <div className="flex items-center gap-4">
-              <Button variant="ghost" asChild>
-                <Link href="/dashboard">Dashboard</Link>
-              </Button>
-              <Button
-                className="gradient-primary text-white hover:opacity-90"
-                asChild
-              >
-                <Link href="/dashboard">
-                  Get Started
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Link>
-              </Button>
+              {session?.user ? (
+                <>
+                  <Button variant="ghost" asChild>
+                    <Link href="/dashboard">Dashboard</Link>
+                  </Button>
+                  <Button variant="ghost" onClick={logout} asChild>
+                    <Link href="/auth/signin">Logout</Link>
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  className="gradient-primary text-white hover:opacity-90"
+                  asChild
+                >
+                  <Link href="/auth/signin">
+                    Get Started
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -185,7 +200,7 @@ export default function LandingPage() {
                 className="gradient-primary text-white hover:opacity-90 animate-glow text-lg px-8 py-6"
                 asChild
               >
-                <Link href="/dashboard">
+                <Link href="/auth/signin">
                   Start Earning Today
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Link>
