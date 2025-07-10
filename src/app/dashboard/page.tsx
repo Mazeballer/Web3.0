@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 import {
   Wallet as WalletIcon,
@@ -20,23 +20,23 @@ import {
   ArrowDownRight,
   DollarSign,
   Activity,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { useAppKit } from '@reown/appkit/react';
-import { useAccount, useBalance } from 'wagmi';
+import { useAppKit } from "@reown/appkit/react";
+import { useAccount, useBalance } from "wagmi";
 
 export default function Dashboard() {
+  // appkit hook
+  const { open } = useAppKit();
+
   // wagmi hooks
   const { address, isConnected } = useAccount();
   const { data: balanceData } = useBalance({ address });
 
-  // appkit hook
-  const { open } = useAppKit();
-
   // format balance to 4 decimals
   const balance = balanceData
     ? parseFloat(balanceData.formatted).toFixed(4)
-    : '0.0000';
+    : "0.0000";
 
   const mockData = {
     trustScore: 750,
@@ -44,9 +44,9 @@ export default function Dashboard() {
     totalLent: 8750,
     eligibilityScore: 85,
     recentActivity: [
-      { type: 'lend', amount: 1000, token: 'USDC', date: '2024-01-15' },
-      { type: 'borrow', amount: 500, token: 'ETH', date: '2024-01-14' },
-      { type: 'repay', amount: 250, token: 'DAI', date: '2024-01-13' },
+      { type: "lend", amount: 1000, token: "USDC", date: "2024-01-15" },
+      { type: "borrow", amount: 500, token: "ETH", date: "2024-01-14" },
+      { type: "repay", amount: 250, token: "DAI", date: "2024-01-13" },
     ],
   };
 
@@ -217,9 +217,9 @@ export default function Dashboard() {
                     className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
                   >
                     <div className="flex items-center gap-3">
-                      {act.type === 'lend' ? (
+                      {act.type === "lend" ? (
                         <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                      ) : act.type === 'borrow' ? (
+                      ) : act.type === "borrow" ? (
                         <ArrowDownRight className="h-4 w-4 text-red-500" />
                       ) : (
                         <DollarSign className="h-4 w-4 text-blue-500" />
@@ -236,11 +236,11 @@ export default function Dashboard() {
                         {act.amount} {act.token}
                       </div>
                       <Badge variant="outline" className="text-xs">
-                        {act.type === 'lend'
-                          ? 'Completed'
-                          : act.type === 'borrow'
-                          ? 'Active'
-                          : 'Paid'}
+                        {act.type === "lend"
+                          ? "Completed"
+                          : act.type === "borrow"
+                          ? "Active"
+                          : "Paid"}
                       </Badge>
                     </div>
                   </div>

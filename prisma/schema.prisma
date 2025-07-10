@@ -8,8 +8,92 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  username       String   @unique
+  first_name     String
+  last_name      String
+  email          String   @unique
+  dob            DateTime
+  phone          String
+  password       String?   // ✅ nullable for Google Auth users
+  address        String
+  id_type        String
+  id_number      String
+  id_file        String
+  occupation     String
+  employer       String
+  income         String
+  funds_source   String
+  investment_exp String
+  risk_tolerance String
+  agree          Boolean  @default(false)
+  google_signin  Boolean  @default(false)
+
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  deposits       Deposit[]
+  borrows        Borrow[]
+  creditScores   CreditScore[]
+  trustPoints    TrustPoint[]
+}
+
+
+model Pool {
+  id                 Int       @id @default(autoincrement())
+  asset_symbol       String
+  total_liquidity    Decimal   @db.Decimal(65, 30)
+  total_borrowed     Decimal   @db.Decimal(65, 30)
+  base_interest_rate Decimal   @db.Decimal(5, 2)
+  base_apy           Decimal   @db.Decimal(5, 2)
+  created_at         DateTime  @default(now())
+
+  deposits           Deposit[]
+  borrows            Borrow[]
+}
+
+model Deposit {
+  id           Int       @id @default(autoincrement())
+  user         User      @relation(fields: [user_id], references: [id])
+  user_id      Int
+  pool         Pool      @relation(fields: [pool_id], references: [id])
+  pool_id      Int
+  amount       Decimal   @db.Decimal(65, 30)
+  tx_hash      String
+  deposited_at DateTime  @default(now())
+}
+
+model Borrow {
+  id                    Int       @id @default(autoincrement())
+  user                  User      @relation(fields: [user_id], references: [id])
+  user_id               Int
+  pool                  Pool      @relation(fields: [pool_id], references: [id])
+  pool_id               Int
+  amount                Decimal   @db.Decimal(65, 30)
+  collateral_amount     Decimal   @db.Decimal(65, 30)
+  collateral_asset      String
+  base_interest_rate    Decimal   @db.Decimal(5, 2)
+  adjusted_interest_rate Decimal  @db.Decimal(5, 2)
+  status                String
+  tx_hash               String
+  borrowed_at           DateTime  @default(now())
+  repaid_at             DateTime?
+}
+
+model CreditScore {
+  id           Int       @id @default(autoincrement())
+  user         User      @relation(fields: [user_id], references: [id])
+  user_id      Int
+  score        Int
+  computed_at  DateTime  @default(now())
+  source       String
+}
+
+model TrustPoint {
+  id          Int       @id @default(autoincrement())
+  user        User      @relation(fields: [user_id], references: [id])
+  user_id     Int
+  points      Int
+  reason      String
+  awarded_at  DateTime  @default(now())
 }
