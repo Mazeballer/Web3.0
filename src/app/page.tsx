@@ -1,17 +1,18 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useSession, signOut } from "next-auth/react";
-import Link from "next/link";
+import { useState, useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import Image from 'next/image';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   ArrowRight,
   Shield,
@@ -22,74 +23,74 @@ import {
   Globe,
   CheckCircle,
   Star,
-} from "lucide-react";
+} from 'lucide-react';
 
 const features = [
   {
     icon: Shield,
-    title: "Trust-Based Lending",
+    title: 'Trust-Based Lending',
     description:
-      "Dynamic interest rates based on your on-chain reputation and credit score",
+      'Dynamic interest rates based on your on-chain reputation and credit score',
   },
   {
     icon: TrendingUp,
-    title: "Competitive APY",
+    title: 'Competitive APY',
     description:
-      "Earn up to 12% APY on your crypto assets with our optimized lending pools",
+      'Earn up to 12% APY on your crypto assets with our optimized lending pools',
   },
   {
     icon: Zap,
-    title: "Instant Liquidity",
+    title: 'Instant Liquidity',
     description:
-      "Access funds immediately with our flash loan technology and instant settlements",
+      'Access funds immediately with our flash loan technology and instant settlements',
   },
   {
     icon: Lock,
-    title: "Secure & Audited",
+    title: 'Secure & Audited',
     description:
-      "Smart contracts audited by leading security firms with $100M+ TVL protection",
+      'Smart contracts audited by leading security firms with $100M+ TVL protection',
   },
   {
     icon: Globe,
-    title: "Multi-Chain Support",
+    title: 'Multi-Chain Support',
     description:
-      "Available on Ethereum, Polygon, and Arbitrum with cross-chain compatibility",
+      'Available on Ethereum, Polygon, and Arbitrum with cross-chain compatibility',
   },
   {
     icon: Users,
-    title: "Community Governed",
+    title: 'Community Governed',
     description:
-      "Decentralized governance where token holders vote on protocol upgrades",
+      'Decentralized governance where token holders vote on protocol upgrades',
   },
 ];
 
 const stats = [
-  { label: "Total Value Locked", value: "$2.4B", change: "+12.5%" },
-  { label: "Active Users", value: "45K+", change: "+8.2%" },
-  { label: "Loans Processed", value: "120K+", change: "+15.7%" },
-  { label: "Average APY", value: "8.5%", change: "+2.1%" },
+  { label: 'Total Value Locked', value: '$2.4B', change: '+12.5%' },
+  { label: 'Active Users', value: '45K+', change: '+8.2%' },
+  { label: 'Loans Processed', value: '120K+', change: '+15.7%' },
+  { label: 'Average APY', value: '8.5%', change: '+2.1%' },
 ];
 
 const testimonials = [
   {
-    name: "Alex Chen",
-    role: "DeFi Trader",
+    name: 'Alex Chen',
+    role: 'CreDiFi Trader',
     content:
-      "DeFiLend's trust score system gave me better rates than any other platform. The UX is incredible.",
+      "CreDiFi's trust score system gave me better rates than any other platform. The UX is incredible.",
     rating: 5,
   },
   {
-    name: "Sarah Johnson",
-    role: "Crypto Investor",
+    name: 'Sarah Johnson',
+    role: 'Crypto Investor',
     content:
-      "I've been lending on DeFiLend for 6 months. Consistent returns and zero issues with withdrawals.",
+      "I've been lending on CreDiFi for 6 months. Consistent returns and zero issues with withdrawals.",
     rating: 5,
   },
   {
-    name: "Michael Torres",
-    role: "DeFi Developer",
+    name: 'Michael Torres',
+    role: 'CreDiFi Developer',
     content:
-      "The smart contracts are well-architected and the documentation is top-notch. Highly recommend.",
+      'The smart contracts are well-architected and the documentation is top-notch. Highly recommend.',
     rating: 5,
   },
 ];
@@ -100,7 +101,7 @@ export default function LandingPage() {
   const [isHydrated, setIsHydrated] = useState(false);
 
   const logout = async () => {
-    await signOut({ redirect: true, callbackUrl: "/auth/signin" }); // Optional redirect
+    await signOut({ redirect: true, callbackUrl: '/auth/signin' }); // Optional redirect
   };
 
   useEffect(() => {
@@ -116,11 +117,15 @@ export default function LandingPage() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
-                <span className="text-white font-bold text-sm">DL</span>
-              </div>
+              <Image
+                src="/transparent-logo.png"
+                alt="DL Logo"
+                width={47}
+                height={47}
+                className="object-contain"
+              />
               <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                DeFiLend
+                CreDiFi
               </span>
             </div>
             <div className="hidden md:flex items-center gap-8">
@@ -187,7 +192,7 @@ export default function LandingPage() {
             <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent leading-tight">
               The Future of
               <br />
-              DeFi Lending
+              CreDiFi Lending
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
               Unlock the power of decentralized finance with trust-based
@@ -260,11 +265,11 @@ export default function LandingPage() {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Why Choose DeFiLend?
+              Why Choose Credifi?
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               Experience the next generation of decentralized lending with
-              features designed for both beginners and DeFi veterans.
+              features designed for both beginners and CreDiFi veterans.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -278,14 +283,14 @@ export default function LandingPage() {
                 <CardHeader>
                   <div
                     className={`h-12 w-12 rounded-lg flex items-center justify-center mb-4 transition-all duration-300 ${
-                      hoveredFeature === index ? "gradient-primary" : "bg-muted"
+                      hoveredFeature === index ? 'gradient-primary' : 'bg-muted'
                     }`}
                   >
                     <feature.icon
                       className={`h-6 w-6 transition-colors duration-300 ${
                         hoveredFeature === index
-                          ? "text-white"
-                          : "text-muted-foreground"
+                          ? 'text-white'
+                          : 'text-muted-foreground'
                       }`}
                     />
                   </div>
@@ -312,7 +317,7 @@ export default function LandingPage() {
               How It Works
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Get started with DeFiLend in three simple steps
+              Get started with CreDiFi in three simple steps
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -360,7 +365,7 @@ export default function LandingPage() {
               Trusted by Thousands
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              See what our community has to say about their DeFiLend experience
+              See what our community has to say about their CreDiFi experience
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -422,7 +427,7 @@ export default function LandingPage() {
                     Insurance Coverage
                   </h3>
                   <p className="text-muted-foreground">
-                    $100M+ insurance coverage through leading DeFi insurance
+                    $100M+ insurance coverage through leading CreDiFi insurance
                     protocols to protect user funds.
                   </p>
                 </CardContent>
@@ -442,7 +447,7 @@ export default function LandingPage() {
               </h2>
               <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
                 Join thousands of users who are already earning competitive
-                yields on their crypto assets with DeFiLend.
+                yields on their crypto assets with CreDiFi.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
@@ -474,11 +479,15 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">DL</span>
-                </div>
+                <Image
+                  src="/transparent-logo.png"
+                  alt="DL Logo"
+                  width={47}
+                  height={47}
+                  className="object-contain"
+                />
                 <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  DeFiLend
+                  CreDiFi
                 </span>
               </div>
               <p className="text-muted-foreground">
@@ -599,7 +608,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-border/50 mt-8 pt-8 text-center text-muted-foreground">
-            <p>&copy; 2024 DeFiLend. All rights reserved.</p>
+            <p>&copy; 2025 CreDiFi. All rights reserved.</p>
           </div>
         </div>
       </footer>

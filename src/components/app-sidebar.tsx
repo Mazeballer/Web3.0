@@ -7,12 +7,14 @@ import {
   Banknote,
   TrendingUp,
   History,
+  DollarSign,
   Moon,
   Sun,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 
 import {
   Sidebar,
@@ -36,6 +38,11 @@ const items = [
   { title: 'Dashboard', url: '/dashboard', icon: Home },
   { title: 'Borrow', url: '/dashboard/borrow', icon: CreditCard },
   { title: 'Lend', url: '/dashboard/lend', icon: Banknote },
+  {
+    title: 'Repayments',
+    url: '/dashboard/repayments',
+    icon: DollarSign,
+  },
   { title: 'Credit Score', url: '/dashboard/credit-score', icon: TrendingUp },
   { title: 'Loan History', url: '/dashboard/loan-history', icon: History },
 ];
@@ -56,11 +63,15 @@ export function AppSidebar() {
     <Sidebar variant="inset" className="border-r border-border/50">
       <SidebarHeader className="border-b border-border/50 p-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
-            <span className="text-white font-bold text-sm">DL</span>
-          </div>
+          <Image
+            src="/icon512_rounded.png"
+            alt="DL Logo"
+            width={47}
+            height={47}
+            className="object-contain"
+          />
           <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            DeFiLend
+            CreDiFi
           </span>
         </Link>
       </SidebarHeader>
