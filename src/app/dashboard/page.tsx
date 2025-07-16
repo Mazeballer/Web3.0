@@ -90,7 +90,7 @@ export default function Dashboard() {
                 <WalletIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{balance} ETH</div>
+                <div className="text-2xl font-bold">{balance} GO</div>
                 <p className="text-xs text-muted-foreground">
                   {address?.slice(0, 6)}...{address?.slice(-4)}
                 </p>
