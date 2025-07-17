@@ -10,8 +10,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { SessionProvider } from 'next-auth/react';
 
+// built-in Reown chains
+import { mainnet, goerli, sepolia } from '@reown/appkit/networks';
+
 const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID!;
 
+// your local Hardhat chain
 const hardhatChain = {
   id: 31337,
   name: 'Hardhat Local',
@@ -23,12 +27,14 @@ const hardhatChain = {
       webSocket: [],
     },
   },
-  testnet: true,
+  testnet: false,
 } as const;
+
+const chains = [mainnet, goerli, sepolia, hardhatChain as any] as const;
 
 const wagmiAdapter = new WagmiAdapter({
   projectId,
-  networks: [hardhatChain] as any,
+  networks: chains as any, // let it flow
 });
 
 const queryClient = new QueryClient();
@@ -36,7 +42,7 @@ const queryClient = new QueryClient();
 createAppKit({
   projectId,
   adapters: [wagmiAdapter],
-  networks: [hardhatChain] as any,
+  networks: chains as any,
   defaultNetwork: hardhatChain as any,
   metadata: {
     name: 'DeFiLend',

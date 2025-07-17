@@ -32,6 +32,7 @@ export default function Dashboard() {
   // wagmi hooks
   const { address, isConnected } = useAccount();
   const { data: balanceData } = useBalance({ address });
+  const symbol = balanceData?.symbol ?? 'ETH';
 
   // format balance to 4 decimals
   const balance = balanceData
@@ -90,7 +91,9 @@ export default function Dashboard() {
                 <WalletIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{balance} GO</div>
+                <div className="text-2xl font-bold">
+                  {balance} {symbol}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {address?.slice(0, 6)}...{address?.slice(-4)}
                 </p>
