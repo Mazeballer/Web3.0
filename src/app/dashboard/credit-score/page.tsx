@@ -32,6 +32,7 @@ import {
   CircleSlash,
   ArrowDownCircle,
   Lock,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -204,6 +205,9 @@ const punishmentRules = [
 export default function CreditScorePage() {
   const { address, isConnected } = useAccount();
   const { open } = useAppKit();
+  const [scoreLoaded, setScoreLoaded] = useState(false);
+  const [factorsLoaded, setFactorsLoaded] = useState(false);
+  const isLoading = !scoreLoaded || !factorsLoaded;
   const [overallScore, setOverallScore] = useState(0);
   const [creditFactors, setCreditFactors] = useState([]);
   const [penaltyFactors, setPenaltyFactors] = useState([]);
@@ -216,6 +220,8 @@ export default function CreditScorePage() {
         setOverallScore(data.score);
       } catch (err) {
         console.error("Failed to fetch credit score", err);
+      } finally {
+        setScoreLoaded(true);
       }
     };
 
@@ -228,7 +234,6 @@ export default function CreditScorePage() {
         const res = await fetch("/api/credit-score/score-breakdown");
         const data = await res.json();
 
-        // Aggregate by reason
         const grouped = data.reduce((acc, entry) => {
           const key = entry.reason;
           if (!acc[key]) {
@@ -239,7 +244,6 @@ export default function CreditScorePage() {
           return acc;
         }, {});
 
-        // Convert to enriched array
         const enriched = Object.values(grouped).map((entry) => {
           const meta = reasonMeta[entry.reason] || {};
           return {
@@ -260,16 +264,18 @@ export default function CreditScorePage() {
         setPenaltyFactors(enriched.filter((e) => e.category === "punishment"));
       } catch (err) {
         console.error("Error fetching score factors:", err);
+      } finally {
+        setFactorsLoaded(true);
       }
     };
 
     fetchFactors();
   }, []);
 
-  useEffect(() => {
-    console.log("✅ Updated Credit Array", creditFactors);
-    console.log("✅ Updated Punishment Array", penaltyFactors);
-  }, [creditFactors, penaltyFactors]);
+  // useEffect(() => {
+  //   console.log("✅ Updated Credit Array", creditFactors);
+  //   console.log("✅ Updated Punishment Array", penaltyFactors);
+  // }, [creditFactors, penaltyFactors]);
 
   const scoreCategory =
     overallScore >= 700 && overallScore <= 850
@@ -282,30 +288,37 @@ export default function CreditScorePage() {
       ? "Low"
       : "New";
 
-  if (!isConnected) {
-    return (
-      <Card className="gradient-card text-center p-12">
-        <CardContent>
-          <TrendingUp className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-xl font-semibold mb-2">
-            Connect Wallet to View Credit Score
-          </h3>
-          <p className="text-muted-foreground mb-6">
-            Connect your wallet to view your DeFi credit score and improvement
-            recommendations
-          </p>
-          <Button
-            onClick={() => open()}
-            className="gradient-primary text-white hover:opacity-90"
-          >
-            Connect Wallet
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  const Spinner = () => (
+    <div className="flex justify-center items-center py-20">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  );
 
-  return (
+  // if (!isConnected) {
+  //   return (
+  //     <Card className="gradient-card text-center p-12">
+  //       <CardContent>
+  //         <TrendingUp className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+  //         <h3 className="text-xl font-semibold mb-2">
+  //           Connect Wallet to View Credit Score
+  //         </h3>
+  //         <p className="text-muted-foreground mb-6">
+  //           Connect your wallet to view your DeFi credit score and improvement
+  //           recommendations
+  //         </p>
+  //         <Button
+  //           onClick={() => open()}
+  //           className="gradient-primary text-white hover:opacity-90"
+  //         >
+  //           Connect Wallet
+  //         </Button>
+  //       </CardContent>
+  //     </Card>
+  //   );
+  // }
+  return isLoading ? (
+    <Spinner />
+  ) : (
     <div className="space-y-6">
       <header>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">

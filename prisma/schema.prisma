@@ -8,90 +8,92 @@ datasource db {
 }
 
 model User {
-  id             Int      @id @default(autoincrement())
-  username       String   @unique
-  first_name     String
-  last_name      String
-  email          String   @unique
-  dob            DateTime
-  phone          String
-  password       String?   // ✅ nullable for Google Auth users
+  email          String       @unique
+  password       String?
   address        String
-  id_type        String
-  id_number      String
-  id_file        String
-  occupation     String
+  agree          Boolean      @default(false)
+  created_at     DateTime     @default(now())
+  dob            DateTime
   employer       String
-  income         String
+  first_name     String
   funds_source   String
+  google_signin  Boolean      @default(false)
+  id_file        String
+  id_number      String
+  id_type        String
+  income         String
   investment_exp String
+  last_name      String
+  occupation     String
+  phone          String
   risk_tolerance String
-  agree          Boolean  @default(false)
-  google_signin  Boolean  @default(false)
-
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  deposits       Deposit[]
+  updated_at     DateTime     @updatedAt
+  username       String       @unique
+  id             Int          @id @default(autoincrement())
   borrows        Borrow[]
-  creditScores   CreditScore[]
+  creditScores   CreditScore?
+  deposits       Deposit[]
   trustPoints    TrustPoint[]
 }
-
 
 model Pool {
   id                 Int       @id @default(autoincrement())
   asset_symbol       String
-  total_liquidity    Decimal   @db.Decimal(65, 30)
-  total_borrowed     Decimal   @db.Decimal(65, 30)
+  total_liquidity    Decimal
+  total_borrowed     Decimal
   base_interest_rate Decimal   @db.Decimal(5, 2)
   base_apy           Decimal   @db.Decimal(5, 2)
   created_at         DateTime  @default(now())
-
-  deposits           Deposit[]
   borrows            Borrow[]
+  deposits           Deposit[]
 }
 
 model Deposit {
-  id           Int       @id @default(autoincrement())
-  user         User      @relation(fields: [user_id], references: [id])
-  user_id      Int
-  pool         Pool      @relation(fields: [pool_id], references: [id])
-  pool_id      Int
-  amount       Decimal   @db.Decimal(65, 30)
-  tx_hash      String
-  deposited_at DateTime  @default(now())
+  id              Int       @id @default(autoincrement())
+  user_id         Int
+  pool_id         Int
+  amount          Decimal
+  tx_hash         String
+  deposited_at    DateTime  @default(now())
+  wallet_address  String    @map("wallet address")
+  accumulated_apy Decimal?  @db.Decimal
+  withdraw_at     DateTime? @db.Timestamp(6)
+  pool            Pool      @relation(fields: [pool_id], references: [id])
+  user            User      @relation(fields: [user_id], references: [id])
 }
 
 model Borrow {
-  id                    Int       @id @default(autoincrement())
-  user                  User      @relation(fields: [user_id], references: [id])
-  user_id               Int
-  pool                  Pool      @relation(fields: [pool_id], references: [id])
-  pool_id               Int
-  amount                Decimal   @db.Decimal(65, 30)
-  collateral_amount     Decimal   @db.Decimal(65, 30)
-  collateral_asset      String
-  base_interest_rate    Decimal   @db.Decimal(5, 2)
-  adjusted_interest_rate Decimal  @db.Decimal(5, 2)
-  status                String
-  tx_hash               String
-  borrowed_at           DateTime  @default(now())
-  repaid_at             DateTime?
+  id                     Int       @id @default(autoincrement())
+  user_id                Int
+  pool_id                Int
+  amount                 Decimal
+  collateral_amount      Decimal
+  collateral_asset       String
+  base_interest_rate     Decimal   @db.Decimal(5, 2)
+  adjusted_interest_rate Decimal   @db.Decimal(5, 2)
+  status                 String
+  tx_hash                String
+  borrowed_at            DateTime  @default(now())
+  repaid_at              DateTime?
+  wallet_address         String
+  repaid_amount          Decimal?  @db.Decimal
+  pool                   Pool      @relation(fields: [pool_id], references: [id])
+  user                   User      @relation(fields: [user_id], references: [id])
 }
 
 model CreditScore {
-  user_id      Int       @unique
-  user         User      @relation(fields: [user_id], references: [id])
-  score        Int
-  computed_at  DateTime  @default(now())
+  user_id     Int      @id @unique
+  score       Int
+  computed_at DateTime @default(now())
+  user        User     @relation(fields: [user_id], references: [id])
 }
 
 model TrustPoint {
-  id          Int       @id @default(autoincrement())
-  user        User      @relation(fields: [user_id], references: [id])
-  user_id     Int
-  points      Int
-  reason      String
-  awarded_at  DateTime  @default(now())
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  points     Int
+  reason     String
+  awarded_at DateTime @default(now())
+  status     String?
+  user       User     @relation(fields: [user_id], references: [id])
 }
