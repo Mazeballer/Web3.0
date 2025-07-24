@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { useAccount } from 'wagmi';
-import { useAppKit } from '@reown/appkit/react';
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { useAccount } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
 import {
   TrendingUp,
   Clock,
@@ -20,86 +20,267 @@ import {
   CheckCircle,
   AlertCircle,
   Target,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
+  Ban,
+  XCircle,
+  AlertTriangle,
+  DollarSign,
+  Calculator,
+  UserCheck,
+  Bank,
+  Users,
+  Repeat,
+  CircleSlash,
+  ArrowDownCircle,
+  Lock,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-const creditFactors = [
-  {
-    name: 'Repayment History',
-    score: 95,
-    weight: 35,
-    status: 'excellent',
-    description: 'Perfect on-time payment record',
-    icon: CheckCircle,
-  },
-  {
-    name: 'Wallet Age',
-    score: 78,
-    weight: 25,
-    status: 'good',
-    description: '18 months of transaction history',
+const reasonMeta = {
+  // ✅ Credit (Reward) Rules
+  "On-time loan repayment": {
+    description: "Per loan paid on or before due date",
     icon: Clock,
+    category: "reward",
   },
-  {
-    name: 'Transaction Frequency',
-    score: 85,
-    weight: 20,
-    status: 'very-good',
-    description: 'Regular DeFi interactions',
-    icon: Activity,
+  "Full loan repayment": {
+    description: "No missed installments, all paid in full",
+    icon: DollarSign,
+    category: "reward",
   },
-  {
-    name: 'Collateral Ratio',
-    score: 72,
-    weight: 20,
-    status: 'good',
-    description: 'Healthy collateralization',
-    icon: Shield,
+  "3 Consecutive good loans": {
+    description: "No late repayment for 3 loans in a row",
+    icon: Calculator,
+    category: "reward",
   },
-];
+  "Verified identity (KYC)": {
+    description: "Full KYC profile completed",
+    icon: UserCheck,
+    category: "reward",
+  },
+  "Lending funds ≥ 30 days": {
+    description:
+      "Funds locked for lending pool without withdrawal for 30+ days",
+    icon: TrendingUp,
+    category: "reward",
+  },
+  "Consistent lending over 3 months": {
+    description: "Minimum monthly lending activity for 3 months",
+    icon: Bank,
+    category: "reward",
+  },
+  "No withdrawal from lending pool ≥ 60 days": {
+    description: "Passive, long-term lending support",
+    icon: Lock,
+    category: "reward",
+  },
+  "Reliable lending record": {
+    description:
+      "5 successful lending cycles without early withdrawal or dispute",
+    icon: Users,
+    category: "reward",
+  },
+
+  // ❌ Punishment Rules
+  "Late payment": {
+    description: "Missed due date, within grace period",
+    icon: AlertTriangle,
+    category: "punishment",
+  },
+  "Missed repayment > 30 days": {
+    description: "Considered default or major delay",
+    icon: XCircle,
+    category: "punishment",
+  },
+  "High loan frequency": {
+    description: "More than 2 loans within 30 days",
+    icon: Repeat,
+    category: "punishment",
+  },
+  "Over-borrowing": {
+    description: "Borrowed more than 90% of assigned credit limit",
+    icon: CircleSlash,
+    category: "punishment",
+  },
+  "Incomplete KYC > 14 days": {
+    description: "KYC not completed within 14 days of account creation",
+    icon: Ban,
+    category: "punishment",
+  },
+  "Early withdrawal from lending pool": {
+    description:
+      "User removes funds from the pool before 30 days, while liquidity is still healthy",
+    icon: ArrowDownCircle,
+    category: "punishment",
+  },
+};
 
 const improvementTips = [
   {
-    title: 'Increase Transaction Frequency',
-    description: 'Regular DeFi interactions improve your activity score',
-    impact: '+15 points',
-    difficulty: 'Easy',
+    title: "🕒 On-time loan repayment",
+    description: "Per loan paid on or before due date",
+    impact: "+20",
+    difficulty: "Easy",
   },
   {
-    title: 'Maintain Higher Collateral',
-    description: 'Keep collateral ratio above 150% for better scores',
-    impact: '+20 points',
-    difficulty: 'Medium',
+    title: "💰 Full loan repayment",
+    description: "No missed installments, all paid in full",
+    impact: "+30",
+    difficulty: "Medium",
   },
   {
-    title: 'Diversify Protocol Usage',
-    description: 'Use multiple DeFi protocols to show ecosystem engagement',
-    impact: '+25 points',
-    difficulty: 'Medium',
+    title: "🧮 3 Consecutive good loans",
+    description: "No late repayment for 3 loans in a row",
+    impact: "+50",
+    difficulty: "Hard",
   },
   {
-    title: 'Long-term Holdings',
-    description: 'Hold assets for longer periods to show stability',
-    impact: '+10 points',
-    difficulty: 'Easy',
+    title: "🧍‍♂️ Verified identity (KYC)",
+    description: "Full KYC profile completed",
+    impact: "+20",
+    difficulty: "Easy",
+  },
+  {
+    title: "💹 Lending funds ≥ 30 days",
+    description:
+      "Funds locked for lending pool without withdrawal for 30+ days",
+    impact: "+15",
+    difficulty: "Easy",
+  },
+  {
+    title: "🏦 Consistent lending over 3 months",
+    description: "Minimum monthly lending activity for 3 months",
+    impact: "+60",
+    difficulty: "Hard",
+  },
+  {
+    title: "🔐 No withdrawal from lending pool ≥ 60 days",
+    description: "Passive, long-term lending support",
+    impact: "+35",
+    difficulty: "Medium",
+  },
+  {
+    title: "🧑‍🤝‍🧑 Reliable lending record",
+    description:
+      "5 successful lending cycles without early withdrawal or dispute",
+    impact: "+40",
+    difficulty: "Medium",
+  },
+];
+
+const punishmentRules = [
+  {
+    title: "⌛ Late payment",
+    description: "Missed due date, within grace period",
+    impact: "-20",
+  },
+  {
+    title: "❌ Missed repayment > 30 days",
+    description: "Considered default or major delay",
+    impact: "-60",
+  },
+  {
+    title: "🔁 High loan frequency",
+    description: "More than 2 loans within 30 days",
+    impact: "-20",
+  },
+  {
+    title: "⚠️ Over-borrowing",
+    description: "Borrowed more than 90% of assigned credit limit",
+    impact: "-25",
+  },
+  {
+    title: "📵 Incomplete KYC > 14 days",
+    description: "KYC not completed within 14 days of account creation",
+    impact: "-15",
+  },
+  {
+    title: "💸 Early withdrawal from lending pool",
+    description:
+      "User removes funds from the pool before 30 days, while liquidity is still healthy (i.e., no active borrower impact)",
+    impact: "-20",
   },
 ];
 
 export default function CreditScorePage() {
   const { address, isConnected } = useAccount();
   const { open } = useAppKit();
+  const [overallScore, setOverallScore] = useState(0);
+  const [creditFactors, setCreditFactors] = useState([]);
+  const [penaltyFactors, setPenaltyFactors] = useState([]);
 
-  const overallScore = 750;
+  useEffect(() => {
+    const fetchScore = async () => {
+      try {
+        const res = await fetch("/api/credit-score/get");
+        const data = await res.json();
+        setOverallScore(data.score);
+      } catch (err) {
+        console.error("Failed to fetch credit score", err);
+      }
+    };
+
+    fetchScore();
+  }, []);
+
+  useEffect(() => {
+    const fetchFactors = async () => {
+      try {
+        const res = await fetch("/api/credit-score/score-breakdown");
+        const data = await res.json();
+
+        // Aggregate by reason
+        const grouped = data.reduce((acc, entry) => {
+          const key = entry.reason;
+          if (!acc[key]) {
+            acc[key] = { ...entry };
+          } else {
+            acc[key].points += entry.points;
+          }
+          return acc;
+        }, {});
+
+        // Convert to enriched array
+        const enriched = Object.values(grouped).map((entry) => {
+          const meta = reasonMeta[entry.reason] || {};
+          return {
+            title: entry.reason,
+            description: meta.description || "",
+            icon: meta.icon,
+            impact:
+              entry.status === "reward"
+                ? `+${entry.points}`
+                : `-${entry.points}`,
+            points: entry.points,
+            category: entry.status,
+            awardedAt: entry.awarded_at,
+          };
+        });
+
+        setCreditFactors(enriched.filter((e) => e.category === "reward"));
+        setPenaltyFactors(enriched.filter((e) => e.category === "punishment"));
+      } catch (err) {
+        console.error("Error fetching score factors:", err);
+      }
+    };
+
+    fetchFactors();
+  }, []);
+
+  useEffect(() => {
+    console.log("✅ Updated Credit Array", creditFactors);
+    console.log("✅ Updated Punishment Array", penaltyFactors);
+  }, [creditFactors, penaltyFactors]);
+
   const scoreCategory =
-    overallScore >= 800
-      ? 'Excellent'
-      : overallScore >= 700
-      ? 'Very Good'
-      : overallScore >= 600
-      ? 'Good'
-      : overallScore >= 500
-      ? 'Fair'
-      : 'Poor';
+    overallScore >= 700 && overallScore <= 850
+      ? "Elite"
+      : overallScore >= 500 && overallScore <= 699
+      ? "Trusted"
+      : overallScore >= 300 && overallScore <= 499
+      ? "Average"
+      : overallScore >= 100
+      ? "Low"
+      : "New";
 
   if (!isConnected) {
     return (
@@ -177,23 +358,25 @@ export default function CreditScorePage() {
               <span className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 {overallScore}
               </span>
-              <span className="text-sm text-muted-foreground">out of 1000</span>
+              <span className="text-sm text-muted-foreground">out of 850</span>
             </div>
           </div>
           <div className="space-y-2">
             <Badge
               variant="secondary"
               className={`text-lg px-4 py-2 ${
-                scoreCategory === 'Excellent'
-                  ? 'bg-emerald-500/20 text-emerald-600'
-                  : scoreCategory === 'Very Good'
-                  ? 'bg-blue-500/20 text-blue-600'
-                  : scoreCategory === 'Good'
-                  ? 'bg-yellow-500/20 text-yellow-600'
-                  : 'bg-red-500/20 text-red-600'
+                scoreCategory === "Elite"
+                  ? "bg-emerald-500/20 text-emerald-600"
+                  : scoreCategory === "Trusted"
+                  ? "bg-blue-500/20 text-blue-600"
+                  : scoreCategory === "Average"
+                  ? "bg-yellow-500/20 text-yellow-600"
+                  : scoreCategory === "Low"
+                  ? "bg-red-500/20 text-red-600"
+                  : "bg-gray-500/20 text-gray-600"
               }`}
             >
-              {scoreCategory}
+              Credit Level: {scoreCategory}
             </Badge>
             <p className="text-muted-foreground">
               You have a {scoreCategory.toLowerCase()} credit score. This
@@ -208,41 +391,71 @@ export default function CreditScorePage() {
         <CardHeader>
           <CardTitle>Score Breakdown</CardTitle>
           <CardDescription>
-            How different factors contribute to your overall credit score
+            Breakdown of factors increasing and decreasing your credit score
           </CardDescription>
         </CardHeader>
+
         <CardContent>
-          <div className="space-y-6">
-            {creditFactors.map((factor) => (
-              <div key={factor.name} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <factor.icon
-                      className={`h-5 w-5 ${
-                        factor.status === 'excellent'
-                          ? 'text-emerald-500'
-                          : factor.status === 'very-good'
-                          ? 'text-blue-500'
-                          : 'text-yellow-500'
-                      }`}
-                    />
-                    <div>
-                      <div className="font-medium">{factor.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {factor.description}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Positive Score Breakdown */}
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-emerald-500">
+                Gained Points
+              </h3>
+
+              {creditFactors.map((factor) => (
+                <div key={factor.title} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3">
+                        <factor.icon className="h-5 w-5 text-emerald-500" />
+                        <div className="font-medium">{factor.title}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-lg">
+                        {factor.points}/{overallScore}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {((factor.points / overallScore) * 100).toFixed(2)}%
+                        weight
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold text-lg">{factor.score}/100</div>
-                    <div className="text-xs text-muted-foreground">
-                      {factor.weight}% weight
+                  <Progress value={factor.points} className="h-2" />
+                </div>
+              ))}
+            </div>
+
+            {/* Negative Score Breakdown */}
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-red-500">
+                Deducted Points
+              </h3>
+              {penaltyFactors.map((penalty) => (
+                <div key={penalty.title} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <penalty.icon className="h-5 w-5 text-red-500" />
+                      <div>
+                        <div className="font-medium text-red-400">
+                          {penalty.title}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-lg text-red-500">
+                        {penalty.impact}
+                      </div>
                     </div>
                   </div>
+                  <Progress
+                    value={Math.abs(parseInt(penalty.impact))}
+                    className="h-2 bg-red-500/10"
+                  />
                 </div>
-                <Progress value={factor.score} className="h-2" />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -259,17 +472,11 @@ export default function CreditScorePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {improvementTips.map((tip, i) => (
               <Card key={i} className="border border-border/50">
                 <CardHeader className="pb-3 flex justify-between items-start">
                   <CardTitle className="text-base">{tip.title}</CardTitle>
-                  <Button
-                    onClick={() => open()}
-                    className="gradient-primary text-white hover:opacity-90"
-                  >
-                    Connect Wallet
-                  </Button>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <p className="text-sm text-muted-foreground mb-3">
@@ -288,8 +495,43 @@ export default function CreditScorePage() {
         </CardContent>
       </Card>
 
-      {/* Score History */}
+      {/* Credit Score Penalties */}
       <Card className="gradient-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Ban className="h-5 w-5 text-red-500" />
+            Credit Score Penalties
+          </CardTitle>
+          <CardDescription>
+            Actions you have to avoid to maintain good credit score
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {punishmentRules.map((rule, i) => (
+              <Card key={i} className="border border-border/50">
+                <CardHeader className="pb-3 flex justify-between items-start">
+                  <CardTitle className="text-base">{rule.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {rule.description}
+                  </p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-red-500">
+                      {rule.impact}
+                    </span>
+                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Score History */}
+      {/* <Card className="gradient-card">
         <CardHeader>
           <CardTitle>Score History</CardTitle>
           <CardDescription>
@@ -310,7 +552,7 @@ export default function CreditScorePage() {
                   <div className="text-xs text-muted-foreground mt-2">
                     {new Date(
                       Date.now() - (5 - idx) * 30 * 24 * 60 * 60 * 1000
-                    ).toLocaleDateString('en-US', { month: 'short' })}
+                    ).toLocaleDateString("en-US", { month: "short" })}
                   </div>
                   <div className="text-sm font-medium">{score}</div>
                 </div>
@@ -321,7 +563,7 @@ export default function CreditScorePage() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }
