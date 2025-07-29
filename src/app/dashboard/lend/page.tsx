@@ -21,13 +21,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Table,
   TableBody,
   TableCell,
@@ -38,6 +31,15 @@ import {
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { usePublicClient } from 'wagmi';
+import { useContractWrite } from 'wagmi';
+import { parseEther, formatEther } from 'viem';
+import { parseAbiItem, decodeEventLog, getEventSelector } from 'viem';
+import LendingPoolABI from '@/abis/LendingPool.json';
+import { formatDistanceToNow } from 'date-fns';
+import { useQueryClient } from '@tanstack/react-query';
+import type { Hex } from 'viem';
 import {
   Banknote,
   TrendingUp,
@@ -46,90 +48,252 @@ import {
   Minus,
   Star,
 } from 'lucide-react';
-
-const lendingPools = [
-  {
-    token: 'ETH',
-    icon: '⟠',
-    apy: 5.2,
-    totalDeposited: 1_250_000,
-    yourDeposit: 2.5,
-    earned: 0.13,
-    rewardPoints: 125,
-  },
-  {
-    token: 'USDC',
-    icon: '💵',
-    apy: 8.5,
-    totalDeposited: 2_500_000,
-    yourDeposit: 5000,
-    earned: 425,
-    rewardPoints: 850,
-  },
-  {
-    token: 'DAI',
-    icon: '◈',
-    apy: 7.8,
-    totalDeposited: 1_800_000,
-    yourDeposit: 1500,
-    earned: 117,
-    rewardPoints: 234,
-  },
-  {
-    token: 'WBTC',
-    icon: '₿',
-    apy: 4.8,
-    totalDeposited: 500_000,
-    yourDeposit: 0.1,
-    earned: 0.0048,
-    rewardPoints: 48,
-  },
-];
+import { useSession } from 'next-auth/react';
+import type { PublicClient } from 'viem';
 
 export default function LendPage() {
-  const { isConnected } = useAccount();
+  const { data: session } = useSession();
+  const userEmail = session?.user?.email;
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { isConnected, address } = useAccount();
+  const client = usePublicClient() as PublicClient;
   const { open } = useAppKit();
   const { toast } = useToast();
+  const {
+    data: totalDeposited = 0,
+    isLoading: isTotalLoading,
+    isError: isTotalError,
+  } = useQuery<number>({
+    queryKey: ['totalDeposited', address!],
+    queryFn: async () => {
+      const res = await fetch(`/api/deposits/total?email=${userEmail}`);
+      const json = (await res.json()) as { totalDeposited: string };
+      return parseFloat(json.totalDeposited);
+    },
+    enabled: !!address,
+  });
+
+  const { data: earnedAmount = 0, isLoading: isEarnedLoading } =
+    useQuery<number>({
+      queryKey: ['earned', address!],
+      queryFn: async () => {
+        const res = await fetch(`/api/deposits/earnings?email=${userEmail}`);
+        const json = await res.json();
+        return parseFloat(json.earned);
+      },
+      enabled: !!address,
+      staleTime: 1000 * 60 * 60 * 24, // 24 hours
+      refetchOnWindowFocus: false, // Don’t re-fetch on tab focus
+    });
+
+  const { data: lendingPools = [] } = useQuery({
+    queryKey: ['userPools', userEmail],
+    queryFn: async () => {
+      const res = await fetch(`/api/pools/user?email=${userEmail}`);
+      const data = await res.json();
+
+      console.log('🐳 /api/pools/user response:', data);
+
+      const iconMap: Record<string, string> = {
+        GO: '◈',
+      };
+
+      return data.map((pool: any) => ({
+        ...pool,
+        icon: iconMap[pool.token?.toUpperCase()] || '❓',
+      }));
+    },
+    enabled: !!userEmail,
+  });
 
   const [selectedPool, setSelectedPool] = useState<
     (typeof lendingPools)[0] | null
   >(null);
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [selectedToken, setSelectedToken] = useState('');
 
-  const handleDeposit = () => {
-    if (!depositAmount || !selectedToken) {
+  const qc = useQueryClient();
+  const poolAddress = process.env.NEXT_PUBLIC_LENDING_POOL_ADDRESS!;
+
+  const { writeContractAsync, isPending } = useContractWrite({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: 'Transaction sent' });
+      },
+      onError: (error: Error) => {
+        toast({
+          title: 'Transaction failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+      },
+    },
+  });
+
+  async function handleDeposit() {
+    const amountNum = parseFloat(depositAmount);
+    if (!depositAmount || isNaN(amountNum) || amountNum <= 0) {
       toast({
-        title: 'Missing Information',
-        description: 'Please fill in all required fields',
+        title: 'Invalid amount',
+        description: 'Enter a valid deposit > 0.',
         variant: 'destructive',
       });
       return;
     }
-    toast({
-      title: 'Deposit Successful',
-      description: `Deposited ${depositAmount} ${selectedToken}.`,
-    });
-    setDepositAmount('');
-    setSelectedToken('');
-  };
 
-  const handleWithdraw = () => {
-    if (!withdrawAmount) {
+    try {
+      // 1️⃣ Send transaction
+      const txHash = await writeContractAsync({
+        address: poolAddress as `0x${string}`,
+        abi: LendingPoolABI.abi,
+        functionName: 'deposit',
+        args: [],
+        value: parseEther(depositAmount),
+      });
+      toast({ title: 'Transaction sent', description: txHash });
+
+      // 2️⃣ Wait + log receipt
+      const receipt = await client.waitForTransactionReceipt({ hash: txHash });
+      console.group('⛓ deposit receipt');
+      console.log('status:', receipt.status); // should be "success"
+      console.log('gasUsed:', receipt.gasUsed?.toString());
+      console.log('logs count:', receipt.logs.length);
+      receipt.logs.forEach((l, i) =>
+        console.log(` log[${i}]`, { topics: l.topics, data: l.data })
+      );
+      console.groupEnd();
+
+      // 3️⃣ Compute event selector & find the one log
+      const selector = getEventSelector(
+        parseAbiItem(
+          'event Deposited(address indexed user, uint256 depositId, uint256 amount, uint256 timestamp)'
+        )
+      );
+      console.log('expected Deposited topic0:', selector);
+
+      const depositLog = receipt.logs.find((l) => l.topics[0] === selector);
+      if (!depositLog) {
+        toast({
+          title: 'No Deposited event found',
+          description: 'Your contract may not have emitted Deposited',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // 4️⃣ Decode and cast to your known shape
+      const raw = decodeEventLog({
+        abi: LendingPoolABI.abi,
+        data: depositLog.data,
+        topics: depositLog.topics,
+      });
+      const decoded = raw as unknown as {
+        args: { depositId: bigint; amount: bigint; timestamp: bigint };
+      };
+      const onchainId = Number(decoded.args.depositId);
+      console.log('✅ onchain depositId =', onchainId);
+
+      // 5️⃣ Persist to your backend
+      await fetch('/api/deposits/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: session?.user?.email,
+          walletAddress: address,
+          amount: depositAmount,
+          txHash,
+          onchain_id: onchainId,
+        }),
+      });
+
+      // 6️⃣ Refresh UI
+      qc.invalidateQueries({ queryKey: ['totalDeposited', address!] });
+      qc.invalidateQueries({ queryKey: ['deposits', address!] });
+      qc.invalidateQueries({ queryKey: ['userPools', address!] });
+
+      toast({ title: 'Deposit successful!' });
+      setDepositAmount('');
+      setIsDialogOpen(false);
+    } catch (e) {
       toast({
-        title: 'Missing Information',
-        description: 'Please enter withdrawal amount',
+        title: 'Transaction failed',
+        description: (e as Error).message,
         variant: 'destructive',
       });
-      return;
     }
-    toast({
-      title: 'Withdrawal Successful',
-      description: `Withdrew ${withdrawAmount} ${selectedPool?.token}.`,
-    });
-    setWithdrawAmount('');
-    setSelectedPool(null);
+  }
+
+  const handleWithdraw = async () => {
+    if (!selectedPool) return;
+    const max = parseFloat(selectedPool.yourDeposit);
+    const amt = parseFloat(withdrawAmount);
+    if (isNaN(amt) || amt <= 0 || amt > max) {
+      return toast({
+        title: 'Invalid amount',
+        description: `Max is ${selectedPool.yourDeposit}`,
+        variant: 'destructive',
+      });
+    }
+
+    try {
+      const txHash = await writeContractAsync({
+        address: poolAddress as `0x${string}`,
+        abi: LendingPoolABI.abi,
+        functionName: 'withdraw',
+        args: [selectedPool.depositId, parseEther(withdrawAmount)],
+      });
+      toast({ title: 'Withdrawal sent', description: txHash });
+
+      const receipt = await client.waitForTransactionReceipt({ hash: txHash });
+
+      // decode the Withdrawn event:
+      const selector = getEventSelector(
+        parseAbiItem(
+          'event Withdrawn(address indexed user, uint256 depositId, uint256 amount, uint256 interest)'
+        )
+      );
+      const log = receipt.logs.find((l) => l.topics[0] === selector);
+      if (!log) throw new Error('No Withdrawn event found');
+
+      // 1) Decode and cast to the known event‐shape
+      const decodedEvent = decodeEventLog({
+        abi: LendingPoolABI.abi,
+        data: log.data,
+        topics: log.topics,
+      }) as unknown as {
+        args: {
+          depositId: bigint;
+          amount: bigint;
+          interest: bigint;
+        };
+      };
+
+      // 2) Now destructure with proper types
+      const { depositId, amount: withdrawn, interest } = decodedEvent.args;
+
+      // update your backend with the on‐chain result
+      await fetch('/api/deposits/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          depositId: Number(depositId),
+          amount: formatEther(withdrawn),
+          interest: formatEther(interest),
+        }),
+      });
+
+      qc.invalidateQueries();
+      toast({ title: 'Withdraw successful!' });
+      setWithdrawAmount('');
+      setSelectedPool(null);
+    } catch (e) {
+      toast({
+        title: 'Withdraw failed',
+        description: (e as Error).message,
+        variant: 'destructive',
+      });
+    }
   };
 
   // If not connected, show a connect prompt
@@ -153,19 +317,6 @@ export default function LendPage() {
     );
   }
 
-  // Compute your aggregate stats
-  const totalDeposited = lendingPools.reduce(
-    (sum, p) =>
-      sum +
-      p.yourDeposit *
-        (p.token === 'ETH' || p.token === 'WBTC' ? 2000 /* USD–peg */ : 1),
-    0
-  );
-  const totalEarned = lendingPools.reduce(
-    (sum, p) =>
-      sum + p.earned * (p.token === 'ETH' || p.token === 'WBTC' ? 2000 : 1),
-    0
-  );
   const totalRewardPoints = lendingPools.reduce(
     (sum, p) => sum + p.rewardPoints,
     0
@@ -183,86 +334,43 @@ export default function LendPage() {
             Earn yield by lending your crypto assets with competitive APY
           </p>
         </div>
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gradient-secondary text-white hover:opacity-90">
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              className="gradient-secondary text-white hover:opacity-90"
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Deposit
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Deposit Assets</DialogTitle>
+              <DialogTitle>Deposit GO</DialogTitle>
               <DialogDescription>
-                Deposit your assets to start earning yield
+                Earn up to{' '}
+                <span className="font-semibold text-emerald-600">8% APY</span>{' '}
+                on your deposited GO tokens.
               </DialogDescription>
             </DialogHeader>
+
             <div className="space-y-4">
               <div>
-                <Label htmlFor="token">Select Token</Label>
-                <Select
-                  value={selectedToken}
-                  onValueChange={(v) => setSelectedToken(v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose token" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ETH">ETH – 5.2% APY</SelectItem>
-                    <SelectItem value="USDC">USDC – 8.5% APY</SelectItem>
-                    <SelectItem value="DAI">DAI – 7.8% APY</SelectItem>
-                    <SelectItem value="WBTC">WBTC – 4.8% APY</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="deposit-amount">Deposit Amount</Label>
+                <Label htmlFor="deposit-amount">Amount (GO)</Label>
                 <Input
                   id="deposit-amount"
-                  placeholder="Enter amount"
+                  placeholder="0.1"
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
                 />
               </div>
-              {depositAmount && selectedToken && (
-                <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Amount:</span>
-                      <span>
-                        {depositAmount} {selectedToken}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>APY:</span>
-                      <span className="text-emerald-600 font-medium">
-                        {selectedToken === 'ETH'
-                          ? '5.2%'
-                          : selectedToken === 'USDC'
-                          ? '8.5%'
-                          : selectedToken === 'DAI'
-                          ? '7.8%'
-                          : '4.8%'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Est. Monthly:</span>
-                      <span className="text-emerald-600 font-medium">
-                        {(
-                          ((parseFloat(depositAmount) || 0) * 0.08) /
-                          12
-                        ).toFixed(4)}{' '}
-                        {selectedToken}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
+
               <Button
                 onClick={handleDeposit}
+                disabled={isPending}
                 className="w-full gradient-secondary text-white hover:opacity-90"
               >
-                Deposit Assets
+                {isPending ? 'Processing…' : 'Confirm Deposit'}
               </Button>
             </div>
           </DialogContent>
@@ -282,7 +390,10 @@ export default function LendPage() {
             <div className="text-2xl font-bold">
               ${totalDeposited.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">Across 4 pools</p>
+            <p className="text-xs text-muted-foreground">
+              Across {lendingPools.length}{' '}
+              {lendingPools.length === 1 ? 'pool' : 'pools'}
+            </p>
           </CardContent>
         </Card>
         <Card className="gradient-card">
@@ -292,7 +403,9 @@ export default function LendPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              ${totalEarned.toFixed(2)}
+              {isEarnedLoading && !earnedAmount
+                ? '...'
+                : `$${earnedAmount.toFixed(2)}`}
             </div>
             <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
@@ -327,16 +440,16 @@ export default function LendPage() {
                 <TableHead>APY</TableHead>
                 <TableHead>Your Deposit</TableHead>
                 <TableHead>Earned</TableHead>
-                <TableHead>Rewards</TableHead>
+                <TableHead>Deposit Age</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {lendingPools.map((pool) => (
-                <TableRow key={pool.token}>
+                <TableRow key={pool.depositId}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{pool.icon}</span>
+                      <span className="text-lg">{pool.icon || '❓'}</span>
                       <span className="font-medium">{pool.token}</span>
                     </div>
                   </TableCell>
@@ -352,10 +465,13 @@ export default function LendPage() {
                     +{pool.earned} {pool.token}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3 w-3 text-yellow-500" />
-                      <span className="text-sm">{pool.rewardPoints}</span>
-                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {pool.deposited_at
+                        ? formatDistanceToNow(new Date(pool.deposited_at), {
+                            addSuffix: true,
+                          })
+                        : 'N/A'}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -411,8 +527,9 @@ export default function LendPage() {
                               onClick={handleWithdraw}
                               className="w-full"
                               variant="outline"
+                              disabled={isPending}
                             >
-                              Withdraw Assets
+                              {isPending ? 'Processing...' : 'Withdraw Assets'}
                             </Button>
                           </div>
                         </DialogContent>
