@@ -1,8 +1,8 @@
-import GoogleProvider from 'next-auth/providers/google';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import { prisma } from '@/lib/prisma';
-import bcrypt from 'bcrypt';
-import type { NextAuthOptions } from 'next-auth';
+import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcrypt";
+import type { NextAuthOptions } from "next-auth";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -11,14 +11,14 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
     CredentialsProvider({
-      name: 'Credentials',
+      name: "Credentials",
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          console.log('Missing email or password');
+          console.log("Missing email or password");
           return null;
         }
 
@@ -27,7 +27,7 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user) {
-          console.log('No user found with this email');
+          console.log("No user found with this email");
           return null;
         }
 
@@ -36,10 +36,12 @@ export const authOptions: NextAuthOptions = {
           user.password
         );
         if (!isValid) {
-          console.log('Incorrect password');
+          console.log("Incorrect password");
           return null;
         }
-
+        if (!user.verified) {
+          throw new Error("User not verified");
+        }
         return {
           id: user.id.toString(), // Convert to string because JWT only stores strings
           name: `${user.first_name} ${user.last_name}`,
@@ -52,31 +54,31 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 
   session: {
-    strategy: 'jwt', // you're using JWT sessions
+    strategy: "jwt", // you're using JWT sessions
   },
 
   pages: {
-    signIn: '/auth/signin',
+    signIn: "/auth/signin",
   },
 
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === 'google') {
+      if (account?.provider === "google") {
         const dbUser = await prisma.user.findUnique({
           where: { email: user.email! },
         });
 
         if (dbUser) {
           if (!dbUser.google_signin) {
-            console.log('User found but not registered for Google Sign-In.');
+            console.log("User found but not registered for Google Sign-In.");
             return `/auth/signin?error=GoogleSignInNotAllowed`;
           } else {
             return true;
           }
         } else {
-          console.log('User not registered in the system.');
-          const [firstName, ...lastParts] = user.name!.split(' ');
-          const lastName = lastParts.join(' ');
+          console.log("User not registered in the system.");
+          const [firstName, ...lastParts] = user.name!.split(" ");
+          const lastName = lastParts.join(" ");
           return `/auth/signup?fn=${firstName}&ln=${lastName}&em=${user.email}`;
         }
       }

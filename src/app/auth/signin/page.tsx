@@ -79,11 +79,18 @@ export default function LoginPage() {
 
       if (res?.error) {
         // If there's an error, show it
-        console.log("Login error:", res.error);
-        toast({
-          title: "Incorrect Credentials",
-          description: "Invalid email or password",
-        });
+        if (res.error == "User not verified") {
+          toast({
+            title: "Email not verified",
+            description: "Please check your inbox and verify your email.",
+          });
+        } else {
+          console.log("Login error:", res.error);
+          toast({
+            title: "Incorrect Credentials",
+            description: "Invalid email or password",
+          });
+        }
       } else if (res?.ok) {
         // If sign-in is successful, redirect to dashboard
         router.push("/dashboard");

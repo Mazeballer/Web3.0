@@ -86,23 +86,99 @@ export default function SignUpPage() {
     }
   };
 
-  const handleNext = () => {
-    if (step === 1) {
-      if (
-        !formData.firstName ||
-        !formData.lastName ||
-        !formData.email ||
-        (!formData.google_signin &&
-          (!formData.password || !formData.confirmPassword))
-      ) {
-        toast({
-          title: "Reminder",
-          description: "Please fill in all required fields.",
-        });
-        return;
-      }
+  function validateStep1() {
+    if (
+      !formData.firstName.trim() ||
+      !formData.lastName.trim() ||
+      !formData.dob.trim() ||
+      !formData.email.trim() ||
+      !formData.phone.trim() ||
+      (!formData.google_signin &&
+        (!formData.password.trim() || !formData.confirmPassword.trim()))
+    ) {
+      toast({
+        title: "Missing Fields",
+        description: "Please fill in all required fields for Personal Info.",
+      });
+      return false;
     }
-    setStep(step + 1);
+    if (
+      !formData.google_signin &&
+      formData.password !== formData.confirmPassword
+    ) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match.",
+      });
+      return false;
+    }
+    return true;
+  }
+
+  // Validate Step 2: Verification
+  function validateStep2() {
+    if (
+      !formData.address.trim() ||
+      !formData.city.trim() ||
+      !formData.state.trim() ||
+      !formData.zip.trim() ||
+      !formData.country.trim() ||
+      !formData.idType.trim() ||
+      !formData.idNumber.trim() ||
+      !formData.idFile.trim()
+    ) {
+      toast({
+        title: "Missing Fields",
+        description: "Please fill in all required fields for Verification.",
+      });
+      return false;
+    }
+    return true;
+  }
+
+  // Validate Step 3: Financial
+  function validateStep3() {
+    if (
+      !formData.occupation.trim() ||
+      !formData.income.trim() ||
+      !formData.fundsSource.trim() ||
+      !formData.investmentExp.trim() ||
+      !formData.riskTolerance.trim() ||
+      !formData.agree
+    ) {
+      toast({
+        title: "Missing Fields",
+        description: "Please fill in all required fields for Financial.",
+      });
+      return false;
+    }
+    return true;
+  }
+
+  const handleNext = () => {
+    // if (step === 1) {
+    //   if (
+    //     !formData.firstName ||
+    //     !formData.lastName ||
+    //     !formData.email ||
+    //     (!formData.google_signin &&
+    //       (!formData.password || !formData.confirmPassword))
+    //   ) {
+    //     toast({
+    //       title: "Reminder",
+    //       description: "Please fill in all required fields.",
+    //     });
+    //     return;
+    //   }
+    // }
+    // setStep(step + 1);
+    if (step === 1) {
+      if (!validateStep1()) return;
+      setStep(2);
+    } else if (step === 2) {
+      if (!validateStep2()) return;
+      setStep(3);
+    }
   };
 
   const handleCreateAccount = async () => {
@@ -128,16 +204,24 @@ export default function SignUpPage() {
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
+        let errorMessage = "Account creation failed.";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          console.warn("⚠️ Could not parse JSON response", e);
+        }
+
         toast({
           title: "Error",
-          description: "Account creation failed.",
+          description: errorMessage,
         });
         return;
       }
       toast({
-        title: "Success",
-        description: "Account created successfully!",
+        title: "Verification needed",
+        description:
+          "Registration successful! Please confirm your email before logging in.",
       });
       setTimeout(() => {
         router.push("/auth/signin");
@@ -159,6 +243,34 @@ export default function SignUpPage() {
         title: "Loading",
         description: "Uploading ID document...",
       });
+
+      // 1. OCR: Send to local OCR server
+      const ocrForm = new FormData();
+      ocrForm.append("file", file);
+      const ocrRes = await fetch("http://localhost:4000/ocr", {
+        method: "POST",
+        body: ocrForm,
+      });
+
+      // Handle underage response
+      if (!ocrRes.ok) {
+        const ocrError = await ocrRes.json();
+        if (ocrError.underage) {
+          toast({
+            title: "Age Restriction",
+            description: "You must be at least 18 years old to register.",
+          });
+          setTimeout(() => {
+            router.push("/");
+          }, 2500);
+          return null;
+        }
+        throw new Error(ocrError.error || "OCR failed");
+      }
+
+      const ocrData = await ocrRes.json();
+
+      // 2. Upload to Supabase as before
       const formDataToUpload = new FormData();
       formDataToUpload.append("file", file);
       formDataToUpload.append("email", email);
@@ -170,11 +282,14 @@ export default function SignUpPage() {
 
       if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
+
       toast({
         title: "Success",
-        description: "Document uploaded successfully!",
+        description: "Document uploaded and details extracted!",
       });
-      return data.publicUrl;
+
+      // Return both OCR and upload results
+      return { ...data, ...ocrData };
     } catch (error) {
       console.error(error);
       toast({
@@ -182,7 +297,6 @@ export default function SignUpPage() {
         description: "Failed to upload document.",
       });
       return null;
-    } finally {
     }
   }
 
@@ -269,6 +383,20 @@ export default function SignUpPage() {
 
                 <div className="flex flex-col">
                   <label className="text-sm text-gray-300 mb-1">
+                    Date of Birth *
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dob}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dob: e.target.value })
+                    }
+                    className="bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-inner text-white placeholder-gray-400 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className="text-sm text-gray-300 mb-1">
                     Email Address *
                   </label>
                   <input
@@ -284,24 +412,10 @@ export default function SignUpPage() {
 
                 <div className="flex flex-col">
                   <label className="text-sm text-gray-300 mb-1">
-                    Date of Birth *
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.dob}
-                    onChange={(e) =>
-                      setFormData({ ...formData, dob: e.target.value })
-                    }
-                    className="bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-inner text-white placeholder-gray-400 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                  />
-                </div>
-
-                <div className="flex flex-col">
-                  <label className="text-sm text-gray-300 mb-1">
                     Phone Number *
                   </label>
                   <input
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="(+60) 12-345 6789"
                     value={formData.phone}
                     onChange={(e) =>
                       setFormData({ ...formData, phone: e.target.value })
@@ -593,12 +707,31 @@ export default function SignUpPage() {
                         const file = e.target.files?.[0];
                         if (!file) return;
 
-                        const publicUrl = await handleUploadKycDocument(
+                        const result = await handleUploadKycDocument(
                           file,
                           formData.email
                         );
-                        if (publicUrl) {
-                          setFormData({ ...formData, idFile: publicUrl });
+                        if (result) {
+                          if (
+                            result.dob &&
+                            formData.dob &&
+                            result.dob !== formData.dob
+                          ) {
+                            toast({
+                              title: "DOB Mismatch",
+                              description:
+                                "The date of birth detected from your ID does not match the one you entered. Please check and try again.",
+                            });
+                            return;
+                          }
+                          setFormData({
+                            ...formData,
+                            idFile: result.publicUrl,
+                            idNumber: result.nric || formData.idNumber,
+                            dob: result.dob || formData.dob,
+                            firstName: result.firstName || formData.firstName,
+                            lastName: result.lastName || formData.lastName,
+                          });
                         }
                       }}
                       className="hidden"
@@ -625,7 +758,10 @@ export default function SignUpPage() {
                   Back
                 </Button>
                 <Button
-                  onClick={() => setStep(3)}
+                  onClick={
+                    // () => setStep(3)
+                    handleNext
+                  }
                   className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-xl py-5 font-semibold text-white transition"
                 >
                   Continue to Financial
@@ -791,7 +927,12 @@ export default function SignUpPage() {
                   Back
                 </Button>
                 <Button
-                  onClick={handleCreateAccount}
+                  onClick={
+                    // handleCreateAccount
+                    () => {
+                      if (validateStep3()) handleCreateAccount();
+                    }
+                  }
                   disabled={isLoading}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-xl py-5 font-semibold text-white transition"
                 >

@@ -30,6 +30,8 @@ model User {
   updated_at     DateTime     @updatedAt
   username       String       @unique
   id             Int          @id @default(autoincrement())
+  verified       Boolean      @default(false)
+  supabase_uid   Int      @unique
   borrows        Borrow[]
   creditScores   CreditScore?
   deposits       Deposit[]
