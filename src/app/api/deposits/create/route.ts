@@ -9,7 +9,8 @@ export async function POST(req: Request) {
       amount,
       txHash,
       email: userEmail,
-      onchain_id, // ← NEW
+      onchain_id,
+      apyBps,
     } = body;
 
     if (
@@ -17,7 +18,8 @@ export async function POST(req: Request) {
       !amount ||
       !txHash ||
       !userEmail ||
-      onchain_id == null // ← validate it
+      onchain_id == null ||
+      apyBps == null
     ) {
       return new NextResponse('Missing or invalid required fields', {
         status: 400,
@@ -55,7 +57,8 @@ export async function POST(req: Request) {
         amount: parseFloat(amount),
         tx_hash: txHash,
         wallet_address: walletAddress,
-        onchain_id, 
+        onchain_id,
+        apy_bps: apyBps,
       },
     });
 

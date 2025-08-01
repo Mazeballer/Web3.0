@@ -23,21 +23,36 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const data = user.deposits.map((deposit) => ({
-      depositId: Number(deposit.onchain_id ?? deposit.id), // <- force into JS number
-      token: deposit.pool.asset_symbol,
-      yourDeposit: parseFloat(deposit.amount.toString()), // Decimal → string → number
-      apy: parseFloat(deposit.pool.base_apy.toString()), // Decimal → string → number
-      earned: 0,
-      // If you actually need the date on the client, stringify it:
-      deposited_at: deposit.deposited_at.toISOString(), // Date → ISO string
-      rewardPoints: 0,
-    }));
+    const now = Date.now();
+    const data = user.deposits.map((d) => {
+      // 1️⃣ Pull and normalize values
+      const principal = parseFloat(d.amount.toString());
+      const apyBps = Number(d.apy_bps ?? BigInt(0)); // e.g. 200 → 2.00%
+      const apyDecimal = apyBps / 10_000;
+      const dailyRate = apyDecimal / 365;
+
+      // 2️⃣ Days since original deposit
+      const depositedAt = new Date(d.deposited_at).getTime();
+      const daysHeld = (now - depositedAt) / (1000 * 60 * 60 * 24);
+
+      // 3️⃣ Compound daily interest
+      const earned =
+        daysHeld > 0 ? principal * (Math.pow(1 + dailyRate, daysHeld) - 1) : 0;
+
+      return {
+        depositId: Number(d.onchain_id ?? d.id),
+        token: d.pool.asset_symbol,
+        yourDeposit: principal,
+        apy: apyDecimal * 100, // e.g. 2 or 5 (%)
+        earned: parseFloat(earned.toFixed(4)), // show up to 4 decimals
+        deposited_at: d.deposited_at,
+        walletAddress: d.wallet_address,
+      };
+    });
 
     return NextResponse.json(data);
   } catch (err: any) {
     console.error('❌ /api/pools/user error:', err);
-    // Surface the real error message for debugging
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -50,27 +50,36 @@ import {
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import type { PublicClient } from 'viem';
+import { creditScoreToApyBps } from '@/lib/apy';
 
 export default function LendPage() {
   const { data: session } = useSession();
   const userEmail = session?.user?.email;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const { isConnected, address } = useAccount();
   const client = usePublicClient() as PublicClient;
   const { open } = useAppKit();
   const { toast } = useToast();
+
+  type Totals = {
+    totalDeposited: string;
+    totalInterest: string;
+    totalBalance: string;
+  };
+
   const {
-    data: totalDeposited = 0,
+    data: totalData,
     isLoading: isTotalLoading,
     isError: isTotalError,
-  } = useQuery<number>({
-    queryKey: ['totalDeposited', address!],
+  } = useQuery<Totals>({
+    queryKey: ['totals', userEmail],
     queryFn: async () => {
       const res = await fetch(`/api/deposits/total?email=${userEmail}`);
-      const json = (await res.json()) as { totalDeposited: string };
-      return parseFloat(json.totalDeposited);
+      if (!res.ok) throw new Error('Failed to load totals');
+      return (await res.json()) as Totals;
     },
-    enabled: !!address,
+    enabled: !!userEmail,
   });
 
   const { data: earnedAmount = 0, isLoading: isEarnedLoading } =
@@ -106,13 +115,39 @@ export default function LendPage() {
     enabled: !!userEmail,
   });
 
+  const { data: trustData, isLoading: isTrustLoading } = useQuery<{
+    totalPoints: number;
+  }>({
+    queryKey: ['trustPoints', userEmail],
+    queryFn: async () => {
+      const res = await fetch(`/api/trustpoints/total?email=${userEmail}`);
+      if (!res.ok) throw new Error('Failed to load trust points');
+      return (await res.json()) as { totalPoints: number };
+    },
+    enabled: !!userEmail,
+  });
+
   const [selectedPool, setSelectedPool] = useState<
     (typeof lendingPools)[0] | null
   >(null);
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
-
+  const [apyBps, setApyBps] = useState<number>(0);
   const qc = useQueryClient();
+
+  useEffect(() => {
+    if (!address) return;
+    fetch('/api/credit-score/get')
+      .then((res) => res.json())
+      .then(({ score }) => {
+        setApyBps(creditScoreToApyBps(score));
+      })
+      .catch(() => {
+        // fallback APY if the fetch fails
+        setApyBps(200);
+      });
+  }, [address]);
+
   const poolAddress = process.env.NEXT_PUBLIC_LENDING_POOL_ADDRESS!;
 
   const { writeContractAsync, isPending } = useContractWrite({
@@ -141,13 +176,29 @@ export default function LendPage() {
       return;
     }
 
+    const code = await client.getCode({
+      address: poolAddress as `0x${string}`,
+    });
+    console.log('⛓ using poolAddress =', poolAddress);
+
+    console.log('🏷 contract code:', code);
+    if (code === '0x') {
+      toast({
+        title: 'Wrong contract',
+        description:
+          'No LendingPool found at that address. Did you deploy and set NEXT_PUBLIC_LENDING_POOL_ADDRESS?',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       // 1️⃣ Send transaction
       const txHash = await writeContractAsync({
         address: poolAddress as `0x${string}`,
         abi: LendingPoolABI.abi,
         functionName: 'deposit',
-        args: [],
+        args: [apyBps],
         value: parseEther(depositAmount),
       });
       toast({ title: 'Transaction sent', description: txHash });
@@ -155,7 +206,7 @@ export default function LendPage() {
       // 2️⃣ Wait + log receipt
       const receipt = await client.waitForTransactionReceipt({ hash: txHash });
       console.group('⛓ deposit receipt');
-      console.log('status:', receipt.status); // should be "success"
+      console.log('status:', receipt.status);
       console.log('gasUsed:', receipt.gasUsed?.toString());
       console.log('logs count:', receipt.logs.length);
       receipt.logs.forEach((l, i) =>
@@ -166,7 +217,7 @@ export default function LendPage() {
       // 3️⃣ Compute event selector & find the one log
       const selector = getEventSelector(
         parseAbiItem(
-          'event Deposited(address indexed user, uint256 depositId, uint256 amount, uint256 timestamp)'
+          'event Deposited(address indexed user, uint256 depositId, uint256 amount, uint256 apyBps,uint256 timestamp)'
         )
       );
       console.log('expected Deposited topic0:', selector);
@@ -188,7 +239,12 @@ export default function LendPage() {
         topics: depositLog.topics,
       });
       const decoded = raw as unknown as {
-        args: { depositId: bigint; amount: bigint; timestamp: bigint };
+        args: {
+          depositId: bigint;
+          amount: bigint;
+          apyBps: bigint;
+          timestamp: bigint;
+        };
       };
       const onchainId = Number(decoded.args.depositId);
       console.log('✅ onchain depositId =', onchainId);
@@ -203,13 +259,14 @@ export default function LendPage() {
           amount: depositAmount,
           txHash,
           onchain_id: onchainId,
+          apyBps,
         }),
       });
 
       // 6️⃣ Refresh UI
-      qc.invalidateQueries({ queryKey: ['totalDeposited', address!] });
-      qc.invalidateQueries({ queryKey: ['deposits', address!] });
-      qc.invalidateQueries({ queryKey: ['userPools', address!] });
+      qc.invalidateQueries({ queryKey: ['totalDeposited', userEmail] });
+      qc.invalidateQueries({ queryKey: ['deposits', userEmail] });
+      qc.invalidateQueries({ queryKey: ['userPools', userEmail] });
 
       toast({ title: 'Deposit successful!' });
       setDepositAmount('');
@@ -233,6 +290,15 @@ export default function LendPage() {
         description: `Max is ${selectedPool.yourDeposit}`,
         variant: 'destructive',
       });
+    }
+
+    if (amt !== max) {
+      toast({
+        title: 'Invalid withdrawal amount',
+        description: `You must withdraw the full deposit of ${selectedPool.yourDeposit} ${selectedPool.token}.`,
+        variant: 'destructive',
+      });
+      return;
     }
 
     try {
@@ -287,6 +353,7 @@ export default function LendPage() {
       toast({ title: 'Withdraw successful!' });
       setWithdrawAmount('');
       setSelectedPool(null);
+      setIsWithdrawDialogOpen(false);
     } catch (e) {
       toast({
         title: 'Withdraw failed',
@@ -317,11 +384,6 @@ export default function LendPage() {
     );
   }
 
-  const totalRewardPoints = lendingPools.reduce(
-    (sum, p) => sum + p.rewardPoints,
-    0
-  );
-
   return (
     <div className="space-y-6">
       {/* Header + New Deposit */}
@@ -348,9 +410,8 @@ export default function LendPage() {
             <DialogHeader>
               <DialogTitle>Deposit GO</DialogTitle>
               <DialogDescription>
-                Earn up to{' '}
-                <span className="font-semibold text-emerald-600">8% APY</span>{' '}
-                on your deposited GO tokens.
+                You’ll earn <strong>{apyBps / 100}% APY</strong> on this
+                deposit.
               </DialogDescription>
             </DialogHeader>
 
@@ -388,11 +449,18 @@ export default function LendPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${totalDeposited.toLocaleString()}
+              {isTotalLoading || !totalData
+                ? 'Loading…'
+                : `$${totalData.totalBalance}`}
             </div>
             <p className="text-xs text-muted-foreground">
-              Across {lendingPools.length}{' '}
-              {lendingPools.length === 1 ? 'pool' : 'pools'}
+              {isTotalLoading
+                ? 'Loading pools…'
+                : lendingPools.length > 0
+                ? `Across ${lendingPools.length} ${
+                    lendingPools.length === 1 ? 'pool' : 'pools'
+                  }`
+                : 'No active pools'}
             </p>
           </CardContent>
         </Card>
@@ -417,7 +485,7 @@ export default function LendPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {totalRewardPoints}
+              {isTrustLoading ? '…' : `${trustData?.totalPoints ?? 0}`}
             </div>
             <p className="text-xs text-muted-foreground">Loyalty rewards</p>
           </CardContent>
@@ -475,65 +543,95 @@ export default function LendPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedPool(pool)}
-                          >
-                            <Minus className="h-3 w-3 mr-1" />
-                            Withdraw
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>Withdraw {pool.token}</DialogTitle>
-                            <DialogDescription>
-                              Withdraw your deposited {pool.token}
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="p-4 bg-muted/30 rounded-lg">
-                              <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                  <span>Available:</span>
-                                  <span className="font-medium">
-                                    {pool.yourDeposit} {pool.token}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Earned:</span>
-                                  <span className="text-emerald-600 font-medium">
-                                    +{pool.earned} {pool.token}
-                                  </span>
+                      {address?.toLowerCase() ===
+                      pool.walletAddress.toLowerCase() ? (
+                        <Dialog
+                          open={isWithdrawDialogOpen}
+                          onOpenChange={setIsWithdrawDialogOpen}
+                        >
+                          <DialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedPool(pool);
+                                setIsWithdrawDialogOpen(true);
+                              }}
+                            >
+                              <Minus className="h-3 w-3 mr-1" />
+                              Withdraw
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>
+                                Withdraw {selectedPool?.token}
+                              </DialogTitle>
+                              <DialogDescription>
+                                Withdraw your deposited {selectedPool?.token}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="p-4 bg-muted/30 rounded-lg">
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span>Available:</span>
+                                    <span className="font-medium">
+                                      {selectedPool?.yourDeposit}{' '}
+                                      {selectedPool?.token}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Earned:</span>
+                                    <span className="text-emerald-600 font-medium">
+                                      +{selectedPool?.earned}{' '}
+                                      {selectedPool?.token}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
+                              <div>
+                                <Label htmlFor="withdraw-amount">
+                                  Withdrawal Amount
+                                </Label>
+                                <Input
+                                  id="withdraw-amount"
+                                  placeholder={`Max: ${selectedPool?.yourDeposit}`}
+                                  value={withdrawAmount}
+                                  onChange={(e) =>
+                                    setWithdrawAmount(e.target.value)
+                                  }
+                                />
+                              </div>
+                              <Button
+                                onClick={handleWithdraw}
+                                disabled={isPending}
+                                className="w-full"
+                              >
+                                {isPending ? 'Processing…' : 'Withdraw Assets'}
+                              </Button>
                             </div>
-                            <div>
-                              <Label htmlFor="withdraw-amount">
-                                Withdrawal Amount
-                              </Label>
-                              <Input
-                                id="withdraw-amount"
-                                placeholder={`Max: ${pool.yourDeposit}`}
-                                value={withdrawAmount}
-                                onChange={(e) =>
-                                  setWithdrawAmount(e.target.value)
-                                }
-                              />
-                            </div>
-                            <Button
-                              onClick={handleWithdraw}
-                              className="w-full"
-                              variant="outline"
-                              disabled={isPending}
-                            >
-                              {isPending ? 'Processing...' : 'Withdraw Assets'}
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                          </DialogContent>
+                        </Dialog>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            toast({
+                              title: 'Wrong wallet',
+                              description: `Please connect ${pool.walletAddress.slice(
+                                0,
+                                6
+                              )}… to withdraw this deposit.`,
+                              variant: 'destructive',
+                            })
+                          }
+                        >
+                          <Minus className="h-3 w-3 mr-1" />
+                          Withdraw
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

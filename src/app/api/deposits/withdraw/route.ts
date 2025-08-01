@@ -2,49 +2,38 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const { email, depositId, amount, interest } = body;
+  const { email, depositId, amount, interest } = await req.json();
 
-  if (!email || !depositId || amount == null || interest == null) {
+  if (!email || depositId == null || amount == null || interest == null) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const deposit = await prisma.deposit.findUnique({
-      where: { id: depositId },
-    });
-
-    if (!deposit || deposit.user_id !== user.id) {
-      return NextResponse.json(
-        { error: 'Deposit not found or does not belong to user' },
-        { status: 403 }
-      );
-    }
-
-    if (deposit.withdraw_at) {
-      return NextResponse.json(
-        { error: 'Deposit already withdrawn' },
-        { status: 400 }
-      );
-    }
-
-    // 1. Update the deposit record
-    await prisma.deposit.update({
-      where: { id: depositId },
-      data: {
-        withdraw_at: new Date(),
+    // 1️⃣ Find the deposit by onchain_id + user.email
+    const deposit = await prisma.deposit.findFirst({
+      where: {
+        onchain_id: Number(depositId),
+        user: { email }, // ← nested filter on the User relation
       },
     });
 
-    // 2. Update the pool liquidity
+    if (!deposit) {
+      return NextResponse.json(
+        { error: 'Deposit not found or not yours' },
+        { status: 404 }
+      );
+    }
+    if (deposit.withdraw_at) {
+      return NextResponse.json({ error: 'Already withdrawn' }, { status: 400 });
+    }
+
+    // 2️⃣ Update withdraw_at on that record
+    await prisma.deposit.update({
+      where: { id: deposit.id },
+      data: { withdraw_at: new Date() },
+    });
+
+    // 3️⃣ Adjust pool liquidity
     await prisma.pool.update({
       where: { id: deposit.pool_id },
       data: {

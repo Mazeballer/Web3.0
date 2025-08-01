@@ -30,6 +30,7 @@ model User {
   updated_at     DateTime     @updatedAt
   username       String       @unique
   id             Int          @id @default(autoincrement())
+  verified       Boolean      @default(false)
   borrows        Borrow[]
   creditScores   CreditScore?
   deposits       Deposit[]
@@ -58,7 +59,8 @@ model Deposit {
   wallet_address  String    @map("wallet address")
   accumulated_apy Decimal?  @db.Decimal
   withdraw_at     DateTime? @db.Timestamp(6)
-  onchain_id      BigInt?
+  onchain_id      BigInt?   @unique
+  apy_bps         BigInt?
   pool            Pool      @relation(fields: [pool_id], references: [id])
   user            User      @relation(fields: [user_id], references: [id])
 }
