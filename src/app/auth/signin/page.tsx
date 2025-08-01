@@ -198,7 +198,7 @@ export default function LoginPage() {
               <label htmlFor="remember">Remember me</label>
             </div>
             <Link
-              href="/forgot-password"
+              href="/auth/forgot-password"
               className="text-blue-400 hover:text-blue-300 transition-colors hover:underline"
             >
               Forgot password?

@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import type React from 'react';
+import type React from "react";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -17,19 +17,19 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   useEffect(() => {
     const checkAuth = () => {
-      const token = localStorage.getItem('auth_token');
-      const userData = localStorage.getItem('user_data');
+      const token = localStorage.getItem("auth_token");
+      const userData = localStorage.getItem("user_data");
 
       if (token && userData) {
         setIsAuthenticated(true);
       } else {
         setIsAuthenticated(false);
         toast({
-          title: 'Authentication Required',
-          description: 'Please sign in to access this page.',
-          variant: 'destructive',
+          title: "Authentication Required",
+          description: "Please sign in to access this page.",
+          variant: "destructive",
         });
-        router.push('/auth/login');
+        router.push("/auth/signin");
       }
     };
 

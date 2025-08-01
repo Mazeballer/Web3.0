@@ -270,7 +270,56 @@ export default function SignUpPage() {
 
       const ocrData = await ocrRes.json();
 
-      // 2. Upload to Supabase as before
+      // 2. Validate extracted data against form data
+      const validationErrors: string[] = [];
+
+      // Check if DOB matches
+      if (ocrData.dob && formData.dob && ocrData.dob !== formData.dob) {
+        validationErrors.push("Date of birth doesn't match your ID document");
+      }
+
+      // Check if first name matches (case insensitive)
+      if (
+        ocrData.firstName &&
+        formData.firstName &&
+        !ocrData.firstName
+          .toLowerCase()
+          .includes(formData.firstName.toLowerCase())
+      ) {
+        validationErrors.push("First name doesn't match your ID document");
+      }
+
+      // Check if last name matches (case insensitive)
+      if (
+        ocrData.lastName &&
+        formData.lastName &&
+        !ocrData.lastName
+          .toLowerCase()
+          .includes(formData.lastName.toLowerCase())
+      ) {
+        validationErrors.push("Last name doesn't match your ID document");
+      }
+
+      // Check if ID number matches
+      if (
+        ocrData.idNumber &&
+        formData.idNumber &&
+        ocrData.idNumber !== formData.idNumber
+      ) {
+        validationErrors.push("ID number doesn't match your document");
+      }
+
+      if (validationErrors.length > 0) {
+        toast({
+          title: "Validation Failed",
+          description:
+            validationErrors.join(". ") + ". Please check your details.",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      // 3. Upload to Supabase if validation passed
       const formDataToUpload = new FormData();
       formDataToUpload.append("file", file);
       formDataToUpload.append("email", email);
@@ -285,7 +334,7 @@ export default function SignUpPage() {
 
       toast({
         title: "Success",
-        description: "Document uploaded and details extracted!",
+        description: "Document uploaded and verified successfully!",
       });
 
       // Return both OCR and upload results
@@ -294,7 +343,8 @@ export default function SignUpPage() {
       console.error(error);
       toast({
         title: "Error",
-        description: "Failed to upload document.",
+        description: "Failed to upload and verify document.",
+        variant: "destructive",
       });
       return null;
     }

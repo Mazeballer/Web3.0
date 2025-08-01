@@ -40,6 +40,7 @@
     "@radix-ui/react-tooltip": "1.1.6",
     "@reown/appkit": "^1.7.13",
     "@reown/appkit-adapter-wagmi": "^1.7.13",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.50.4",
     "@tanstack/react-query": "^5.81.5",
     "@wagmi/core": "^2.18.0",

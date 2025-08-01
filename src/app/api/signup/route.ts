@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 import { createClient } from "@supabase/supabase-js";
 
-// Use anon key (not service role) for Auth
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!

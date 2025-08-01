@@ -1,59 +1,64 @@
-'use client';
+"use client";
 
-import type React from 'react';
+import type React from "react";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Mail,
   ArrowLeft,
   CheckCircle,
   AlertCircle,
   Shield,
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const router = useRouter();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
+    setError("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const res = await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
-      // Mock email sending
-      if (email) {
+      const result = await res.json();
+
+      if (!res.ok) {
+        setError(result.error || "Something went wrong");
+      } else {
         setIsEmailSent(true);
         toast({
-          title: 'Reset Email Sent!',
-          description: 'Check your inbox for password reset instructions.',
+          title: "Reset Email Sent!",
+          description: "Check your inbox for password reset instructions.",
         });
-      } else {
-        setError('Please enter a valid email address');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      console.error(err);
+      setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +96,7 @@ export default function ForgotPasswordPage() {
             </div>
 
             <div className="text-center text-sm text-slate-400">
-              Didn't receive the email? Check your spam folder or{' '}
+              Didn't receive the email? Check your spam folder or{" "}
               <button
                 onClick={() => setIsEmailSent(false)}
                 className="text-blue-400 hover:text-blue-300 underline"
@@ -101,7 +106,7 @@ export default function ForgotPasswordPage() {
             </div>
 
             <Button
-              onClick={() => router.push('/auth/login')}
+              onClick={() => router.push("/auth/signin")}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
             >
               Back to Sign In
@@ -167,13 +172,13 @@ export default function ForgotPasswordPage() {
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               disabled={isLoading}
             >
-              {isLoading ? 'Sending Reset Link...' : 'Send Reset Link'}
+              {isLoading ? "Sending Reset Link..." : "Send Reset Link"}
             </Button>
           </form>
 
           <div className="flex items-center justify-center">
             <Link
-              href="/auth/login"
+              href="/auth/signin"
               className="flex items-center text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />

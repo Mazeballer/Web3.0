@@ -4,21 +4,23 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    const body = await req.json();
+    const email = body.email;
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ message: "User not found." }, { status: 404 });
+    if (!email) {
+      return NextResponse.json({ message: "Email required" }, { status: 400 });
     }
 
-    if (user.verified === true) {
-      return NextResponse.json(
-        { message: "Email already verified." },
-        { status: 200 }
-      );
+    console.log("🔍 Looking for email:", email);
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    }
+
+    if (user.verified) {
+      return NextResponse.json({ status: "already" }, { status: 200 });
     }
 
     await prisma.user.update({
@@ -26,15 +28,9 @@ export async function POST(req: Request) {
       data: { verified: true },
     });
 
-    return NextResponse.json(
-      { message: "Email verified successfully." },
-      { status: 200 }
-    );
+    return NextResponse.json({ status: "verified" }, { status: 200 });
   } catch (err) {
-    console.error("Email verification error:", err);
-    return NextResponse.json(
-      { message: "Internal server error." },
-      { status: 500 }
-    );
+    console.error("❌ Email verification failed:", err);
+    return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }
