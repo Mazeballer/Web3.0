@@ -59,7 +59,7 @@ model Deposit {
   wallet_address  String    @map("wallet address")
   accumulated_apy Decimal?  @db.Decimal
   withdraw_at     DateTime? @db.Timestamp(6)
-  onchain_id      BigInt?   @unique
+  onchain_id      BigInt?
   apy_bps         BigInt?
   pool            Pool      @relation(fields: [pool_id], references: [id])
   user            User      @relation(fields: [user_id], references: [id])
@@ -80,6 +80,7 @@ model Borrow {
   repaid_at              DateTime?
   wallet_address         String
   repaid_amount          Decimal?  @db.Decimal
+  onchain_id             BigInt?
   pool                   Pool      @relation(fields: [pool_id], references: [id])
   user                   User      @relation(fields: [user_id], references: [id])
 }

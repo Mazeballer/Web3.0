@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -17,9 +17,9 @@ import {
   DialogDescription,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -27,19 +27,19 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { useAccount } from 'wagmi';
-import { useAppKit } from '@reown/appkit/react';
-import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
-import { usePublicClient } from 'wagmi';
-import { useContractWrite } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
-import { parseAbiItem, decodeEventLog, getEventSelector } from 'viem';
-import LendingPoolABI from '@/abis/LendingPool.json';
-import { formatDistanceToNow } from 'date-fns';
-import { useQueryClient } from '@tanstack/react-query';
-import type { Hex } from 'viem';
+} from "@/components/ui/table";
+import { useAccount } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { usePublicClient } from "wagmi";
+import { useContractWrite } from "wagmi";
+import { parseEther, formatEther } from "viem";
+import { parseAbiItem, decodeEventLog, getEventSelector } from "viem";
+import LendingPoolABI from "@/abis/LendingPool.json";
+import { formatDistanceToNow } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Hex } from "viem";
 import {
   Banknote,
   TrendingUp,
@@ -47,10 +47,10 @@ import {
   Plus,
   Minus,
   Star,
-} from 'lucide-react';
-import { useSession } from 'next-auth/react';
-import type { PublicClient } from 'viem';
-import { creditScoreToApyBps } from '@/lib/apy';
+} from "lucide-react";
+import { useSession } from "next-auth/react";
+import type { PublicClient } from "viem";
+import { creditScoreToApyBps } from "@/lib/apy";
 
 export default function LendPage() {
   const { data: session } = useSession();
@@ -73,10 +73,10 @@ export default function LendPage() {
     isLoading: isTotalLoading,
     isError: isTotalError,
   } = useQuery<Totals>({
-    queryKey: ['totals', userEmail],
+    queryKey: ["totals", userEmail],
     queryFn: async () => {
       const res = await fetch(`/api/deposits/total?email=${userEmail}`);
-      if (!res.ok) throw new Error('Failed to load totals');
+      if (!res.ok) throw new Error("Failed to load totals");
       return (await res.json()) as Totals;
     },
     enabled: !!userEmail,
@@ -84,7 +84,7 @@ export default function LendPage() {
 
   const { data: earnedAmount = 0, isLoading: isEarnedLoading } =
     useQuery<number>({
-      queryKey: ['earned', address!],
+      queryKey: ["earned", address!],
       queryFn: async () => {
         const res = await fetch(`/api/deposits/earnings?email=${userEmail}`);
         const json = await res.json();
@@ -96,20 +96,20 @@ export default function LendPage() {
     });
 
   const { data: lendingPools = [] } = useQuery({
-    queryKey: ['userPools', userEmail],
+    queryKey: ["userPools", userEmail],
     queryFn: async () => {
       const res = await fetch(`/api/pools/user?email=${userEmail}`);
       const data = await res.json();
 
-      console.log('🐳 /api/pools/user response:', data);
+      console.log("🐳 /api/pools/user response:", data);
 
       const iconMap: Record<string, string> = {
-        GO: '◈',
+        GO: "◈",
       };
 
       return data.map((pool: any) => ({
         ...pool,
-        icon: iconMap[pool.token?.toUpperCase()] || '❓',
+        icon: iconMap[pool.token?.toUpperCase()] || "❓",
       }));
     },
     enabled: !!userEmail,
@@ -118,10 +118,10 @@ export default function LendPage() {
   const { data: trustData, isLoading: isTrustLoading } = useQuery<{
     totalPoints: number;
   }>({
-    queryKey: ['trustPoints', userEmail],
+    queryKey: ["trustPoints", userEmail],
     queryFn: async () => {
       const res = await fetch(`/api/trustpoints/total?email=${userEmail}`);
-      if (!res.ok) throw new Error('Failed to load trust points');
+      if (!res.ok) throw new Error("Failed to load trust points");
       return (await res.json()) as { totalPoints: number };
     },
     enabled: !!userEmail,
@@ -130,14 +130,14 @@ export default function LendPage() {
   const [selectedPool, setSelectedPool] = useState<
     (typeof lendingPools)[0] | null
   >(null);
-  const [depositAmount, setDepositAmount] = useState('');
-  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [depositAmount, setDepositAmount] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
   const [apyBps, setApyBps] = useState<number>(0);
   const qc = useQueryClient();
 
   useEffect(() => {
     if (!address) return;
-    fetch('/api/credit-score/get')
+    fetch("/api/credit-score/get")
       .then((res) => res.json())
       .then(({ score }) => {
         setApyBps(creditScoreToApyBps(score));
@@ -153,13 +153,13 @@ export default function LendPage() {
   const { writeContractAsync, isPending } = useContractWrite({
     mutation: {
       onSuccess: () => {
-        toast({ title: 'Transaction sent' });
+        toast({ title: "Transaction sent" });
       },
       onError: (error: Error) => {
         toast({
-          title: 'Transaction failed',
+          title: "Transaction failed",
           description: error.message,
-          variant: 'destructive',
+          variant: "destructive",
         });
       },
     },
@@ -169,9 +169,9 @@ export default function LendPage() {
     const amountNum = parseFloat(depositAmount);
     if (!depositAmount || isNaN(amountNum) || amountNum <= 0) {
       toast({
-        title: 'Invalid amount',
-        description: 'Enter a valid deposit > 0.',
-        variant: 'destructive',
+        title: "Invalid amount",
+        description: "Enter a valid deposit > 0.",
+        variant: "destructive",
       });
       return;
     }
@@ -179,15 +179,15 @@ export default function LendPage() {
     const code = await client.getCode({
       address: poolAddress as `0x${string}`,
     });
-    console.log('⛓ using poolAddress =', poolAddress);
+    console.log("⛓ using poolAddress =", poolAddress);
 
-    console.log('🏷 contract code:', code);
-    if (code === '0x') {
+    console.log("🏷 contract code:", code);
+    if (code === "0x") {
       toast({
-        title: 'Wrong contract',
+        title: "Wrong contract",
         description:
-          'No LendingPool found at that address. Did you deploy and set NEXT_PUBLIC_LENDING_POOL_ADDRESS?',
-        variant: 'destructive',
+          "No LendingPool found at that address. Did you deploy and set NEXT_PUBLIC_LENDING_POOL_ADDRESS?",
+        variant: "destructive",
       });
       return;
     }
@@ -197,18 +197,18 @@ export default function LendPage() {
       const txHash = await writeContractAsync({
         address: poolAddress as `0x${string}`,
         abi: LendingPoolABI.abi,
-        functionName: 'deposit',
+        functionName: "deposit",
         args: [apyBps],
         value: parseEther(depositAmount),
       });
-      toast({ title: 'Transaction sent', description: txHash });
+      toast({ title: "Transaction sent", description: txHash });
 
       // 2️⃣ Wait + log receipt
       const receipt = await client.waitForTransactionReceipt({ hash: txHash });
-      console.group('⛓ deposit receipt');
-      console.log('status:', receipt.status);
-      console.log('gasUsed:', receipt.gasUsed?.toString());
-      console.log('logs count:', receipt.logs.length);
+      console.group("⛓ deposit receipt");
+      console.log("status:", receipt.status);
+      console.log("gasUsed:", receipt.gasUsed?.toString());
+      console.log("logs count:", receipt.logs.length);
       receipt.logs.forEach((l, i) =>
         console.log(` log[${i}]`, { topics: l.topics, data: l.data })
       );
@@ -217,17 +217,17 @@ export default function LendPage() {
       // 3️⃣ Compute event selector & find the one log
       const selector = getEventSelector(
         parseAbiItem(
-          'event Deposited(address indexed user, uint256 depositId, uint256 amount, uint256 apyBps,uint256 timestamp)'
+          "event Deposited(address indexed user, uint256 depositId, uint256 amount, uint256 apyBps,uint256 timestamp)"
         )
       );
-      console.log('expected Deposited topic0:', selector);
+      console.log("expected Deposited topic0:", selector);
 
       const depositLog = receipt.logs.find((l) => l.topics[0] === selector);
       if (!depositLog) {
         toast({
-          title: 'No Deposited event found',
-          description: 'Your contract may not have emitted Deposited',
-          variant: 'destructive',
+          title: "No Deposited event found",
+          description: "Your contract may not have emitted Deposited",
+          variant: "destructive",
         });
         return;
       }
@@ -247,12 +247,12 @@ export default function LendPage() {
         };
       };
       const onchainId = Number(decoded.args.depositId);
-      console.log('✅ onchain depositId =', onchainId);
+      console.log("✅ onchain depositId =", onchainId);
 
       // 5️⃣ Persist to your backend
-      await fetch('/api/deposits/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/deposits/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: session?.user?.email,
           walletAddress: address,
@@ -264,18 +264,18 @@ export default function LendPage() {
       });
 
       // 6️⃣ Refresh UI
-      qc.invalidateQueries({ queryKey: ['totalDeposited', userEmail] });
-      qc.invalidateQueries({ queryKey: ['deposits', userEmail] });
-      qc.invalidateQueries({ queryKey: ['userPools', userEmail] });
+      qc.invalidateQueries({ queryKey: ["totalDeposited", userEmail] });
+      qc.invalidateQueries({ queryKey: ["deposits", userEmail] });
+      qc.invalidateQueries({ queryKey: ["userPools", userEmail] });
 
-      toast({ title: 'Deposit successful!' });
-      setDepositAmount('');
+      toast({ title: "Deposit successful!" });
+      setDepositAmount("");
       setIsDialogOpen(false);
     } catch (e) {
       toast({
-        title: 'Transaction failed',
+        title: "Transaction failed",
         description: (e as Error).message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   }
@@ -286,17 +286,17 @@ export default function LendPage() {
     const amt = parseFloat(withdrawAmount);
     if (isNaN(amt) || amt <= 0 || amt > max) {
       return toast({
-        title: 'Invalid amount',
+        title: "Invalid amount",
         description: `Max is ${selectedPool.yourDeposit}`,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
 
     if (amt !== max) {
       toast({
-        title: 'Invalid withdrawal amount',
+        title: "Invalid withdrawal amount",
         description: `You must withdraw the full deposit of ${selectedPool.yourDeposit} ${selectedPool.token}.`,
-        variant: 'destructive',
+        variant: "destructive",
       });
       return;
     }
@@ -305,21 +305,21 @@ export default function LendPage() {
       const txHash = await writeContractAsync({
         address: poolAddress as `0x${string}`,
         abi: LendingPoolABI.abi,
-        functionName: 'withdraw',
+        functionName: "withdraw",
         args: [selectedPool.depositId, parseEther(withdrawAmount)],
       });
-      toast({ title: 'Withdrawal sent', description: txHash });
+      toast({ title: "Withdrawal sent", description: txHash });
 
       const receipt = await client.waitForTransactionReceipt({ hash: txHash });
 
       // decode the Withdrawn event:
       const selector = getEventSelector(
         parseAbiItem(
-          'event Withdrawn(address indexed user, uint256 depositId, uint256 amount, uint256 interest)'
+          "event Withdrawn(address indexed user, uint256 depositId, uint256 amount, uint256 interest)"
         )
       );
       const log = receipt.logs.find((l) => l.topics[0] === selector);
-      if (!log) throw new Error('No Withdrawn event found');
+      if (!log) throw new Error("No Withdrawn event found");
 
       // 1) Decode and cast to the known event‐shape
       const decodedEvent = decodeEventLog({
@@ -338,9 +338,9 @@ export default function LendPage() {
       const { depositId, amount: withdrawn, interest } = decodedEvent.args;
 
       // update your backend with the on‐chain result
-      await fetch('/api/deposits/withdraw', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/deposits/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: userEmail,
           depositId: Number(depositId),
@@ -350,15 +350,15 @@ export default function LendPage() {
       });
 
       qc.invalidateQueries();
-      toast({ title: 'Withdraw successful!' });
-      setWithdrawAmount('');
+      toast({ title: "Withdraw successful!" });
+      setWithdrawAmount("");
       setSelectedPool(null);
       setIsWithdrawDialogOpen(false);
     } catch (e) {
       toast({
-        title: 'Withdraw failed',
+        title: "Withdraw failed",
         description: (e as Error).message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -431,7 +431,7 @@ export default function LendPage() {
                 disabled={isPending}
                 className="w-full gradient-secondary text-white hover:opacity-90"
               >
-                {isPending ? 'Processing…' : 'Confirm Deposit'}
+                {isPending ? "Processing…" : "Confirm Deposit"}
               </Button>
             </div>
           </DialogContent>
@@ -450,17 +450,17 @@ export default function LendPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               {isTotalLoading || !totalData
-                ? 'Loading…'
+                ? "Loading…"
                 : `$${totalData.totalBalance}`}
             </div>
             <p className="text-xs text-muted-foreground">
               {isTotalLoading
-                ? 'Loading pools…'
+                ? "Loading pools…"
                 : lendingPools.length > 0
                 ? `Across ${lendingPools.length} ${
-                    lendingPools.length === 1 ? 'pool' : 'pools'
+                    lendingPools.length === 1 ? "pool" : "pools"
                   }`
-                : 'No active pools'}
+                : "No active pools"}
             </p>
           </CardContent>
         </Card>
@@ -472,7 +472,7 @@ export default function LendPage() {
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
               {isEarnedLoading && !earnedAmount
-                ? '...'
+                ? "..."
                 : `$${earnedAmount.toFixed(2)}`}
             </div>
             <p className="text-xs text-muted-foreground">This month</p>
@@ -485,7 +485,7 @@ export default function LendPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {isTrustLoading ? '…' : `${trustData?.totalPoints ?? 0}`}
+              {isTrustLoading ? "…" : `${trustData?.totalPoints ?? 0}`}
             </div>
             <p className="text-xs text-muted-foreground">Loyalty rewards</p>
           </CardContent>
@@ -517,7 +517,7 @@ export default function LendPage() {
                 <TableRow key={pool.depositId}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{pool.icon || '❓'}</span>
+                      <span className="text-lg">{pool.icon || "❓"}</span>
                       <span className="font-medium">{pool.token}</span>
                     </div>
                   </TableCell>
@@ -538,7 +538,7 @@ export default function LendPage() {
                         ? formatDistanceToNow(new Date(pool.deposited_at), {
                             addSuffix: true,
                           })
-                        : 'N/A'}
+                        : "N/A"}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -577,14 +577,14 @@ export default function LendPage() {
                                   <div className="flex justify-between">
                                     <span>Available:</span>
                                     <span className="font-medium">
-                                      {selectedPool?.yourDeposit}{' '}
+                                      {selectedPool?.yourDeposit}{" "}
                                       {selectedPool?.token}
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
                                     <span>Earned:</span>
                                     <span className="text-emerald-600 font-medium">
-                                      +{selectedPool?.earned}{' '}
+                                      +{selectedPool?.earned}{" "}
                                       {selectedPool?.token}
                                     </span>
                                   </div>
@@ -608,7 +608,7 @@ export default function LendPage() {
                                 disabled={isPending}
                                 className="w-full"
                               >
-                                {isPending ? 'Processing…' : 'Withdraw Assets'}
+                                {isPending ? "Processing…" : "Withdraw Assets"}
                               </Button>
                             </div>
                           </DialogContent>
@@ -619,12 +619,12 @@ export default function LendPage() {
                           variant="outline"
                           onClick={() =>
                             toast({
-                              title: 'Wrong wallet',
+                              title: "Wrong wallet",
                               description: `Please connect ${pool.walletAddress.slice(
                                 0,
                                 6
                               )}… to withdraw this deposit.`,
-                              variant: 'destructive',
+                              variant: "destructive",
                             })
                           }
                         >

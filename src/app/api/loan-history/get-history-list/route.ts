@@ -57,7 +57,7 @@ export async function GET() {
         account: d.wallet_address,
         amount: Number(d.amount),
         token: d.pool.asset_symbol,
-        apy: Number(d.accumulated_apy || d.pool.base_apy),
+        apy: Number(d.accumulated_apy),
         duration: Math.ceil((Date.now() - +d.deposited_at) / (1000 * 60 * 60 * 24)),
         startDate: d.deposited_at.toISOString(),
         endDate: d.withdraw_at?.toISOString() || null,
@@ -69,7 +69,7 @@ export async function GET() {
         a.startDate > b.startDate ? -1 : 1
     );
 
-    console.log("Loan data:", history);
+    // console.log("Loan data:", history);
 
     return NextResponse.json(history);
 }
