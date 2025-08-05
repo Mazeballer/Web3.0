@@ -36,7 +36,7 @@ import { usePublicClient } from "wagmi";
 import { useContractWrite } from "wagmi";
 import { parseEther, formatEther } from "viem";
 import { parseAbiItem, decodeEventLog, getEventSelector } from "viem";
-import LendingPoolABI from "@/abis/LendingPool.json";
+import LendingPoolABI from "@/abis/LendingBorrowingPool.json";
 import { formatDistanceToNow } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Hex } from "viem";
