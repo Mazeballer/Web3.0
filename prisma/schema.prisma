@@ -81,6 +81,7 @@ model Borrow {
   wallet_address         String
   repaid_amount          Decimal?  @db.Decimal
   onchain_id             BigInt?
+  borrow_duration        BigInt?
   pool                   Pool      @relation(fields: [pool_id], references: [id])
   user                   User      @relation(fields: [user_id], references: [id])
 }

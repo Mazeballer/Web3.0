@@ -1,0 +1,11 @@
+ignoredBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@reown/appkit'
+  - bcrypt
+  - bufferutil
+  - keccak
+  - prisma
+  - secp256k1
+  - sharp
+  - utf-8-validate

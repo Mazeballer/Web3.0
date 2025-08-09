@@ -281,6 +281,7 @@ export default function BorrowPage() {
           txHash,
           walletAddress: address,
           onchainId,
+          loanDuration,
         }),
       });
 
