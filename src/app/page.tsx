@@ -148,10 +148,10 @@ export default function LandingPage() {
                 Security
               </Link>
               <Link
-                href="#community"
+                href="/FAQ"
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
-                Community
+                FAQ
               </Link>
             </div>
 
@@ -161,7 +161,12 @@ export default function LandingPage() {
                   <Button variant="ghost" asChild>
                     <Link href="/dashboard">Dashboard</Link>
                   </Button>
-                  <Button variant="ghost" onClick={logout} asChild>
+                  <Button
+                    variant="ghost"
+                    onClick={logout}
+                    className="gradient-primary text-white hover:opacity-90"
+                    asChild
+                  >
                     <Link href="/auth/signin">Logout</Link>
                   </Button>
                 </>
@@ -212,13 +217,13 @@ export default function LandingPage() {
                 </Button>
               ) : null}
               <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                View Documentation
+                Welcome to CreDiFi
               </Button>
             </div>
             <div className="mt-12 flex flex-wrap justify-center gap-8 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-emerald-500" />
-                <span>No KYC Required</span>
+                <span>Instant KYC Approval</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-emerald-500" />
@@ -459,13 +464,6 @@ export default function LandingPage() {
                     Launch App
                     <ArrowRight className="h-5 w-5 ml-2" />
                   </Link>
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="text-lg px-8 py-6"
-                >
-                  Read Whitepaper
                 </Button>
               </div>
             </CardContent>

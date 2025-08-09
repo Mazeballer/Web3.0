@@ -12,13 +12,13 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 1️⃣ Find the user
+    // 1️ Find the user
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // 2️⃣ Fetch all active (non-withdrawn) deposits
+    // 2️ Fetch all active (non-withdrawn) deposits
     const deposits = await prisma.deposit.findMany({
       where: {
         user_id: user.id,
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       },
     });
 
-    // 3️⃣ Sum up principal and compute accrued interest for each
+    // 3️ Sum up principal and compute accrued interest for each
     const now = new Date();
     let totalPrincipal = 0;
     let totalInterest = 0;
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 
     const totalBalance = totalPrincipal + totalInterest;
 
-    // 4️⃣ Return all three values:
+    // 4️ Return all three values:
     return NextResponse.json({
       totalDeposited: totalPrincipal.toFixed(2), // e.g. "100.00"
       totalInterest: totalInterest.toFixed(2), // e.g. "1.23"
