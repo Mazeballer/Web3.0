@@ -23,12 +23,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: "already" }, { status: 200 });
     }
 
+    // 1️⃣ Mark user as verified
     await prisma.user.update({
       where: { email },
       data: { verified: true },
     });
 
-    return NextResponse.json({ status: "verified" }, { status: 200 });
+    // 2️⃣ Award trust points (+20)
+    const bonus = 20;
+    const reason = "Verified identity (KYC)";
+    const status = "reward";
+
+    await prisma.trustPoint.create({
+      data: {
+        user_id: user.id,
+        points: bonus, // store as positive
+        reason,
+        status,
+      },
+    });
+
+    // 3️⃣ Increase credit score by 20
+    await prisma.creditScore.update({
+      where: { user_id: user.id },
+      data: { score: { increment: bonus } },
+    });
+
+    return NextResponse.json({ status: "verified", bonus }, { status: 200 });
   } catch (err) {
     console.error("❌ Email verification failed:", err);
     return NextResponse.json({ message: "Server error" }, { status: 500 });

@@ -156,22 +156,6 @@ export default function SignUpPage() {
   }
 
   const handleNext = () => {
-    // if (step === 1) {
-    //   if (
-    //     !formData.firstName ||
-    //     !formData.lastName ||
-    //     !formData.email ||
-    //     (!formData.google_signin &&
-    //       (!formData.password || !formData.confirmPassword))
-    //   ) {
-    //     toast({
-    //       title: "Reminder",
-    //       description: "Please fill in all required fields.",
-    //     });
-    //     return;
-    //   }
-    // }
-    // setStep(step + 1);
     if (step === 1) {
       if (!validateStep1()) return;
       setStep(2);

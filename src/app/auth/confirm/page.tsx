@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +11,7 @@ export default function ConfirmPage() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleVerify = async () => {
     try {
@@ -24,6 +26,9 @@ export default function ConfirmPage() {
       if (res.ok) {
         setStatus("success");
         toast({ title: "Success", description: data.message });
+        setTimeout(() => {
+          router.push("/auth/signin");
+        }, 2000);
       } else {
         setStatus("error");
         toast({ title: "Error", description: data.message });
