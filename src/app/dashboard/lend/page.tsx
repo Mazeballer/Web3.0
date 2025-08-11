@@ -285,7 +285,7 @@ export default function LendPage() {
           return;
         }
 
-        if (data.meetsRequirement) {
+        if (data.meetsRequirement && !data.alreadyClaimed) {
           toast({
             title: "Congratulations!",
             description: `You've been awarded ${data.addedPoints} points.`,

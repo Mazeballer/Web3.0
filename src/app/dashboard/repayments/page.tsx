@@ -137,6 +137,66 @@ export default function RepaymentsPage() {
     return "upcoming";
   }
 
+  async function evaluateRepayment(borrowId: number) {
+    try {
+      const res = await fetch("/api/credit-score/check-borrow-dur", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ borrowId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.applied) {
+        console.error(data.error || data.message || "No rule applied");
+        return null; // indicate no reward/punishment applied
+      }
+
+      toast({
+        title:
+          data.status === "reward" ? "🎉 Reward Earned" : "⚠️ Penalty Applied",
+        description: `${data.reason} (${data.pointsForDisplay} points)`,
+        variant: data.status === "reward" ? "default" : "destructive",
+      });
+
+      return data; // return full response if needed
+    } catch (e) {
+      console.error("Error evaluating repayment:", e);
+      return null;
+    }
+  }
+
+  async function checkThreeGoodLoans() {
+    try {
+      const res = await fetch("/api/credit-score/3-con-borrow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to check loans");
+      }
+
+      const data = await res.json();
+      console.log("3 Good Loans Check Result:", data);
+
+      if (data.awarded) {
+        toast({
+          title: "🎉 Reward Earned",
+          description: `${data.reason} (${data.pointsForDisplay} points)`,
+          variant: "default",
+        });
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error("Error calling 3 Good Loans API:", error);
+      alert(`Error: ${error.message}`);
+      return null;
+    }
+  }
+
   const upcomingPaymentsSafe = loans
     .filter((l) => l.status !== "completed") // keep
     .map((loan) => {
@@ -339,6 +399,9 @@ export default function RepaymentsPage() {
         title: "Repayment successful",
         description: "Your collateral has been released.",
       });
+
+      evaluateRepayment(loan.id);
+      checkThreeGoodLoans();
 
       return true; // ✅ important
     } catch (e: any) {

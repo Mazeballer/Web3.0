@@ -306,7 +306,7 @@ export default function BorrowPage() {
       setSelectedPool(null);
       setUpdatedInfo(false);
 
-      if (getMaxLoanFromScore(overallScore) - totalBorrowed) {
+      if (totalBorrowed / getMaxLoanFromScore(overallScore) > 0.9) {
         try {
           const res = await fetch("/api/credit-score/over-borrow", {
             method: "POST",

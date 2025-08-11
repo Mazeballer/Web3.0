@@ -43,11 +43,6 @@ const reasonMeta = {
     icon: Clock,
     category: "reward",
   },
-  "Full loan repayment": {
-    description: "No missed installments, all paid in full",
-    icon: DollarSign,
-    category: "reward",
-  },
   "3 Consecutive good loans": {
     description: "No late repayment for 3 loans in a row",
     icon: Calculator,
@@ -110,12 +105,6 @@ const improvementTips = [
     description: "Per loan paid on or before due date",
     impact: "+20",
     difficulty: "Easy",
-  },
-  {
-    title: "💰 Full loan repayment",
-    description: "No missed installments, all paid in full",
-    impact: "+30",
-    difficulty: "Medium",
   },
   {
     title: "🧮 3 Consecutive good loans",
