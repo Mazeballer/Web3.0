@@ -97,6 +97,20 @@ export default function Dashboard() {
     }
   }
 
+  function getEligibility(creditScore: number): number {
+    if (creditScore >= 700) {
+      return 100; // 🟩 Elite
+    } else if (creditScore >= 500) {
+      return 75; // 🟨 Trusted
+    } else if (creditScore >= 300) {
+      return 50; // 🟧 Average
+    } else if (creditScore >= 100) {
+      return 25; // 🟥 Low
+    } else {
+      return 20; // ⬛ Risky
+    }
+  }
+
   function getMaxLoanFromScore(score: number): number {
     if (score >= 700) return 50000;
     if (score >= 500) return 30000;
@@ -173,7 +187,7 @@ export default function Dashboard() {
     creditCategory: scoreCategory,
     totalBorrowed: totalBorrowed,
     totalLent: totalLentData?.totalDeposited,
-    eligibilityScore: 85,
+    eligibilityScore: getEligibility(creditScore ?? 0),
     maxLoan: getMaxLoanFromScore(creditScore ?? 0),
     interestRate: getInterestRate(creditScore ?? 0),
     collateral: collateralRatio,
