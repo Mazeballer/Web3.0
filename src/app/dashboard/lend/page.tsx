@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -17,9 +17,9 @@ import {
   DialogDescription,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -27,19 +27,19 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { useAccount } from 'wagmi';
-import { useAppKit } from '@reown/appkit/react';
-import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
-import { usePublicClient } from 'wagmi';
-import { useContractWrite } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
-import { parseAbiItem, decodeEventLog, getEventSelector } from 'viem';
-import LendingPoolABI from '@/abis/LendingPool.json';
-import { formatDistanceToNow } from 'date-fns';
-import { useQueryClient } from '@tanstack/react-query';
-import type { Hex } from 'viem';
+} from "@/components/ui/table";
+import { useAccount } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { usePublicClient } from "wagmi";
+import { useContractWrite } from "wagmi";
+import { parseEther, formatEther } from "viem";
+import { parseAbiItem, decodeEventLog, getEventSelector } from "viem";
+import LendingPoolABI from "@/abis/LendingBorrowingPool.json";
+import { formatDistanceToNow } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Hex } from "viem";
 import {
   Banknote,
   TrendingUp,
@@ -47,35 +47,44 @@ import {
   Plus,
   Minus,
   Star,
-} from 'lucide-react';
-import { useSession } from 'next-auth/react';
-import type { PublicClient } from 'viem';
+} from "lucide-react";
+import { useSession } from "next-auth/react";
+import type { PublicClient } from "viem";
+import { creditScoreToApyBps } from "@/lib/apy";
 
 export default function LendPage() {
   const { data: session } = useSession();
   const userEmail = session?.user?.email;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const { isConnected, address } = useAccount();
   const client = usePublicClient() as PublicClient;
   const { open } = useAppKit();
   const { toast } = useToast();
+
+  type Totals = {
+    totalDeposited: string;
+    totalInterest: string;
+    totalBalance: string;
+  };
+
   const {
-    data: totalDeposited = 0,
+    data: totalData,
     isLoading: isTotalLoading,
     isError: isTotalError,
-  } = useQuery<number>({
-    queryKey: ['totalDeposited', address!],
+  } = useQuery<Totals>({
+    queryKey: ["totalDeposited", userEmail],
     queryFn: async () => {
       const res = await fetch(`/api/deposits/total?email=${userEmail}`);
-      const json = (await res.json()) as { totalDeposited: string };
-      return parseFloat(json.totalDeposited);
+      if (!res.ok) throw new Error("Failed to load totals");
+      return (await res.json()) as Totals;
     },
-    enabled: !!address,
+    enabled: !!userEmail,
   });
 
   const { data: earnedAmount = 0, isLoading: isEarnedLoading } =
     useQuery<number>({
-      queryKey: ['earned', address!],
+      queryKey: ["earned", address!],
       queryFn: async () => {
         const res = await fetch(`/api/deposits/earnings?email=${userEmail}`);
         const json = await res.json();
@@ -87,21 +96,33 @@ export default function LendPage() {
     });
 
   const { data: lendingPools = [] } = useQuery({
-    queryKey: ['userPools', userEmail],
+    queryKey: ["userPools", userEmail],
     queryFn: async () => {
       const res = await fetch(`/api/pools/user?email=${userEmail}`);
       const data = await res.json();
 
-      console.log('🐳 /api/pools/user response:', data);
+      console.log("🐳 /api/pools/user response:", data);
 
       const iconMap: Record<string, string> = {
-        GO: '◈',
+        GO: "◈",
       };
 
       return data.map((pool: any) => ({
         ...pool,
-        icon: iconMap[pool.token?.toUpperCase()] || '❓',
+        icon: iconMap[pool.token?.toUpperCase()] || "❓",
       }));
+    },
+    enabled: !!userEmail,
+  });
+
+  const { data: trustData, isLoading: isTrustLoading } = useQuery<{
+    totalPoints: number;
+  }>({
+    queryKey: ["trustPoints", userEmail],
+    queryFn: async () => {
+      const res = await fetch(`/api/trustpoints/total?email=${userEmail}`);
+      if (!res.ok) throw new Error("Failed to load trust points");
+      return (await res.json()) as { totalPoints: number };
     },
     enabled: !!userEmail,
   });
@@ -109,22 +130,36 @@ export default function LendPage() {
   const [selectedPool, setSelectedPool] = useState<
     (typeof lendingPools)[0] | null
   >(null);
-  const [depositAmount, setDepositAmount] = useState('');
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-
+  const [depositAmount, setDepositAmount] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [apyBps, setApyBps] = useState<number>(0);
   const qc = useQueryClient();
+
+  useEffect(() => {
+    if (!address) return;
+    fetch("/api/credit-score/get")
+      .then((res) => res.json())
+      .then(({ score }) => {
+        setApyBps(creditScoreToApyBps(score));
+      })
+      .catch(() => {
+        // fallback APY if the fetch fails
+        setApyBps(200);
+      });
+  }, [address]);
+
   const poolAddress = process.env.NEXT_PUBLIC_LENDING_POOL_ADDRESS!;
 
   const { writeContractAsync, isPending } = useContractWrite({
     mutation: {
       onSuccess: () => {
-        toast({ title: 'Transaction sent' });
+        toast({ title: "Transaction sent" });
       },
       onError: (error: Error) => {
         toast({
-          title: 'Transaction failed',
+          title: "Transaction failed",
           description: error.message,
-          variant: 'destructive',
+          variant: "destructive",
         });
       },
     },
@@ -134,91 +169,139 @@ export default function LendPage() {
     const amountNum = parseFloat(depositAmount);
     if (!depositAmount || isNaN(amountNum) || amountNum <= 0) {
       toast({
-        title: 'Invalid amount',
-        description: 'Enter a valid deposit > 0.',
-        variant: 'destructive',
+        title: "Invalid amount",
+        description: "Enter a valid deposit > 0.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const code = await client.getCode({
+      address: poolAddress as `0x${string}`,
+    });
+    console.log("⛓ using poolAddress =", poolAddress);
+
+    console.log("🏷 contract code:", code);
+    if (code === "0x") {
+      toast({
+        title: "Wrong contract",
+        description:
+          "No LendingPool found at that address. Did you deploy and set NEXT_PUBLIC_LENDING_POOL_ADDRESS?",
+        variant: "destructive",
       });
       return;
     }
 
     try {
-      // 1️⃣ Send transaction
+      // 1️ Send transaction
       const txHash = await writeContractAsync({
         address: poolAddress as `0x${string}`,
         abi: LendingPoolABI.abi,
-        functionName: 'deposit',
-        args: [],
+        functionName: "deposit",
+        args: [apyBps],
         value: parseEther(depositAmount),
       });
-      toast({ title: 'Transaction sent', description: txHash });
+      toast({ title: "Transaction sent", description: txHash });
 
-      // 2️⃣ Wait + log receipt
+      // 2️ Wait + log receipt
       const receipt = await client.waitForTransactionReceipt({ hash: txHash });
-      console.group('⛓ deposit receipt');
-      console.log('status:', receipt.status); // should be "success"
-      console.log('gasUsed:', receipt.gasUsed?.toString());
-      console.log('logs count:', receipt.logs.length);
+      console.group("⛓ deposit receipt");
+      console.log("status:", receipt.status);
+      console.log("gasUsed:", receipt.gasUsed?.toString());
+      console.log("logs count:", receipt.logs.length);
       receipt.logs.forEach((l, i) =>
         console.log(` log[${i}]`, { topics: l.topics, data: l.data })
       );
       console.groupEnd();
 
-      // 3️⃣ Compute event selector & find the one log
+      // 3️ Compute event selector & find the one log
       const selector = getEventSelector(
         parseAbiItem(
-          'event Deposited(address indexed user, uint256 depositId, uint256 amount, uint256 timestamp)'
+          "event Deposited(address indexed user, uint256 depositId, uint256 amount, uint256 apyBps,uint256 timestamp)"
         )
       );
-      console.log('expected Deposited topic0:', selector);
+      console.log("expected Deposited topic0:", selector);
 
       const depositLog = receipt.logs.find((l) => l.topics[0] === selector);
       if (!depositLog) {
         toast({
-          title: 'No Deposited event found',
-          description: 'Your contract may not have emitted Deposited',
-          variant: 'destructive',
+          title: "No Deposited event found",
+          description: "Your contract may not have emitted Deposited",
+          variant: "destructive",
         });
         return;
       }
 
-      // 4️⃣ Decode and cast to your known shape
+      // 4️ Decode and cast to your known shape
       const raw = decodeEventLog({
         abi: LendingPoolABI.abi,
         data: depositLog.data,
         topics: depositLog.topics,
       });
       const decoded = raw as unknown as {
-        args: { depositId: bigint; amount: bigint; timestamp: bigint };
+        args: {
+          depositId: bigint;
+          amount: bigint;
+          apyBps: bigint;
+          timestamp: bigint;
+        };
       };
       const onchainId = Number(decoded.args.depositId);
-      console.log('✅ onchain depositId =', onchainId);
+      console.log("✅ onchain depositId =", onchainId);
 
-      // 5️⃣ Persist to your backend
-      await fetch('/api/deposits/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // 5️ Persist to your backend
+      await fetch("/api/deposits/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: session?.user?.email,
           walletAddress: address,
           amount: depositAmount,
           txHash,
           onchain_id: onchainId,
+          apyBps,
         }),
       });
 
-      // 6️⃣ Refresh UI
-      qc.invalidateQueries({ queryKey: ['totalDeposited', address!] });
-      qc.invalidateQueries({ queryKey: ['deposits', address!] });
-      qc.invalidateQueries({ queryKey: ['userPools', address!] });
+      // 6️ Refresh UI
+      qc.invalidateQueries({ queryKey: ["totalDeposited", userEmail] });
+      qc.invalidateQueries({ queryKey: ["deposits", userEmail] });
+      qc.invalidateQueries({ queryKey: ["userPools", userEmail] });
 
-      toast({ title: 'Deposit successful!' });
-      setDepositAmount('');
+      toast({ title: "Deposit successful!" });
+      setDepositAmount("");
+
+      try {
+        const res = await fetch("/api/credit-score/3con-dep", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}), // no extra data needed since we get user from session
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error(data.error || "Something went wrong");
+          return;
+        }
+
+        if (data.meetsRequirement) {
+          toast({
+            title: "Congratulations!",
+            description: `You've been awarded ${data.addedPoints} points.`,
+            variant: "default",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to check reward:", error);
+      }
+
       setIsDialogOpen(false);
     } catch (e) {
       toast({
-        title: 'Transaction failed',
+        title: "Transaction failed",
         description: (e as Error).message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   }
@@ -227,33 +310,43 @@ export default function LendPage() {
     if (!selectedPool) return;
     const max = parseFloat(selectedPool.yourDeposit);
     const amt = parseFloat(withdrawAmount);
+    const id = selectedPool.id;
     if (isNaN(amt) || amt <= 0 || amt > max) {
       return toast({
-        title: 'Invalid amount',
+        title: "Invalid amount",
         description: `Max is ${selectedPool.yourDeposit}`,
-        variant: 'destructive',
+        variant: "destructive",
       });
+    }
+
+    if (amt !== max) {
+      toast({
+        title: "Invalid withdrawal amount",
+        description: `You must withdraw the full deposit of ${selectedPool.yourDeposit} ${selectedPool.token}.`,
+        variant: "destructive",
+      });
+      return;
     }
 
     try {
       const txHash = await writeContractAsync({
         address: poolAddress as `0x${string}`,
         abi: LendingPoolABI.abi,
-        functionName: 'withdraw',
+        functionName: "withdraw",
         args: [selectedPool.depositId, parseEther(withdrawAmount)],
       });
-      toast({ title: 'Withdrawal sent', description: txHash });
+      toast({ title: "Withdrawal sent", description: txHash });
 
       const receipt = await client.waitForTransactionReceipt({ hash: txHash });
 
       // decode the Withdrawn event:
       const selector = getEventSelector(
         parseAbiItem(
-          'event Withdrawn(address indexed user, uint256 depositId, uint256 amount, uint256 interest)'
+          "event Withdrawn(address indexed user, uint256 depositId, uint256 amount, uint256 interest)"
         )
       );
       const log = receipt.logs.find((l) => l.topics[0] === selector);
-      if (!log) throw new Error('No Withdrawn event found');
+      if (!log) throw new Error("No Withdrawn event found");
 
       // 1) Decode and cast to the known event‐shape
       const decodedEvent = decodeEventLog({
@@ -272,9 +365,9 @@ export default function LendPage() {
       const { depositId, amount: withdrawn, interest } = decodedEvent.args;
 
       // update your backend with the on‐chain result
-      await fetch('/api/deposits/withdraw', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/deposits/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: userEmail,
           depositId: Number(depositId),
@@ -284,14 +377,41 @@ export default function LendPage() {
       });
 
       qc.invalidateQueries();
-      toast({ title: 'Withdraw successful!' });
-      setWithdrawAmount('');
+      toast({ title: "Withdraw successful!" });
+      setWithdrawAmount("");
+
+      try {
+        const res = await fetch("/api/credit-score/withdraw-condi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ loanId: id }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error(data.error || "Failed to check points");
+          return;
+        }
+        toast({
+          title:
+            data.status === "reward"
+              ? "🎉 Reward Earned"
+              : "⚠️ Penalty Applied",
+          description: `${data.reason} (${data.pointsAwarded} points)`,
+          variant: data.status === "reward" ? "default" : "destructive",
+        });
+      } catch (err) {
+        console.error("Error calling withdrawal points API:", err);
+      }
+
       setSelectedPool(null);
+      setIsWithdrawDialogOpen(false);
     } catch (e) {
       toast({
-        title: 'Withdraw failed',
+        title: "Withdraw failed",
         description: (e as Error).message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -316,11 +436,6 @@ export default function LendPage() {
       </Card>
     );
   }
-
-  const totalRewardPoints = lendingPools.reduce(
-    (sum, p) => sum + p.rewardPoints,
-    0
-  );
 
   return (
     <div className="space-y-6">
@@ -348,9 +463,8 @@ export default function LendPage() {
             <DialogHeader>
               <DialogTitle>Deposit GO</DialogTitle>
               <DialogDescription>
-                Earn up to{' '}
-                <span className="font-semibold text-emerald-600">8% APY</span>{' '}
-                on your deposited GO tokens.
+                You’ll earn <strong>{apyBps / 100}% APY</strong> on this
+                deposit.
               </DialogDescription>
             </DialogHeader>
 
@@ -370,7 +484,7 @@ export default function LendPage() {
                 disabled={isPending}
                 className="w-full gradient-secondary text-white hover:opacity-90"
               >
-                {isPending ? 'Processing…' : 'Confirm Deposit'}
+                {isPending ? "Processing…" : "Confirm Deposit"}
               </Button>
             </div>
           </DialogContent>
@@ -388,11 +502,18 @@ export default function LendPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${totalDeposited.toLocaleString()}
+              {isTotalLoading || !totalData
+                ? "Loading…"
+                : `$${totalData.totalBalance}`}
             </div>
             <p className="text-xs text-muted-foreground">
-              Across {lendingPools.length}{' '}
-              {lendingPools.length === 1 ? 'pool' : 'pools'}
+              {isTotalLoading
+                ? "Loading pools…"
+                : lendingPools.length > 0
+                ? `Across ${lendingPools.length} ${
+                    lendingPools.length === 1 ? "pool" : "pools"
+                  }`
+                : "No active pools"}
             </p>
           </CardContent>
         </Card>
@@ -404,7 +525,7 @@ export default function LendPage() {
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
               {isEarnedLoading && !earnedAmount
-                ? '...'
+                ? "..."
                 : `$${earnedAmount.toFixed(2)}`}
             </div>
             <p className="text-xs text-muted-foreground">This month</p>
@@ -417,7 +538,7 @@ export default function LendPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {totalRewardPoints}
+              {isTrustLoading ? "…" : `${trustData?.totalPoints ?? 0}`}
             </div>
             <p className="text-xs text-muted-foreground">Loyalty rewards</p>
           </CardContent>
@@ -449,7 +570,7 @@ export default function LendPage() {
                 <TableRow key={pool.depositId}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{pool.icon || '❓'}</span>
+                      <span className="text-lg">{pool.icon || "❓"}</span>
                       <span className="font-medium">{pool.token}</span>
                     </div>
                   </TableCell>
@@ -470,70 +591,100 @@ export default function LendPage() {
                         ? formatDistanceToNow(new Date(pool.deposited_at), {
                             addSuffix: true,
                           })
-                        : 'N/A'}
+                        : "N/A"}
                     </span>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedPool(pool)}
-                          >
-                            <Minus className="h-3 w-3 mr-1" />
-                            Withdraw
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>Withdraw {pool.token}</DialogTitle>
-                            <DialogDescription>
-                              Withdraw your deposited {pool.token}
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="p-4 bg-muted/30 rounded-lg">
-                              <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                  <span>Available:</span>
-                                  <span className="font-medium">
-                                    {pool.yourDeposit} {pool.token}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Earned:</span>
-                                  <span className="text-emerald-600 font-medium">
-                                    +{pool.earned} {pool.token}
-                                  </span>
+                      {address?.toLowerCase() ===
+                      pool.walletAddress.toLowerCase() ? (
+                        <Dialog
+                          open={isWithdrawDialogOpen}
+                          onOpenChange={setIsWithdrawDialogOpen}
+                        >
+                          <DialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedPool(pool);
+                                setIsWithdrawDialogOpen(true);
+                              }}
+                            >
+                              <Minus className="h-3 w-3 mr-1" />
+                              Withdraw
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>
+                                Withdraw {selectedPool?.token}
+                              </DialogTitle>
+                              <DialogDescription>
+                                Withdraw your deposited {selectedPool?.token}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="p-4 bg-muted/30 rounded-lg">
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span>Available:</span>
+                                    <span className="font-medium">
+                                      {selectedPool?.yourDeposit}{" "}
+                                      {selectedPool?.token}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Earned:</span>
+                                    <span className="text-emerald-600 font-medium">
+                                      +{selectedPool?.earned}{" "}
+                                      {selectedPool?.token}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
+                              <div>
+                                <Label htmlFor="withdraw-amount">
+                                  Withdrawal Amount
+                                </Label>
+                                <Input
+                                  id="withdraw-amount"
+                                  placeholder={`Max: ${selectedPool?.yourDeposit}`}
+                                  value={withdrawAmount}
+                                  onChange={(e) =>
+                                    setWithdrawAmount(e.target.value)
+                                  }
+                                />
+                              </div>
+                              <Button
+                                onClick={handleWithdraw}
+                                disabled={isPending}
+                                className="w-full"
+                              >
+                                {isPending ? "Processing…" : "Withdraw Assets"}
+                              </Button>
                             </div>
-                            <div>
-                              <Label htmlFor="withdraw-amount">
-                                Withdrawal Amount
-                              </Label>
-                              <Input
-                                id="withdraw-amount"
-                                placeholder={`Max: ${pool.yourDeposit}`}
-                                value={withdrawAmount}
-                                onChange={(e) =>
-                                  setWithdrawAmount(e.target.value)
-                                }
-                              />
-                            </div>
-                            <Button
-                              onClick={handleWithdraw}
-                              className="w-full"
-                              variant="outline"
-                              disabled={isPending}
-                            >
-                              {isPending ? 'Processing...' : 'Withdraw Assets'}
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                          </DialogContent>
+                        </Dialog>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            toast({
+                              title: "Wrong wallet",
+                              description: `Please connect ${pool.walletAddress.slice(
+                                0,
+                                6
+                              )}… to withdraw this deposit.`,
+                              variant: "destructive",
+                            })
+                          }
+                        >
+                          <Minus className="h-3 w-3 mr-1" />
+                          Withdraw
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

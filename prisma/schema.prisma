@@ -60,6 +60,7 @@ model Deposit {
   accumulated_apy Decimal?  @db.Decimal
   withdraw_at     DateTime? @db.Timestamp(6)
   onchain_id      BigInt?
+  apy_bps         BigInt?
   pool            Pool      @relation(fields: [pool_id], references: [id])
   user            User      @relation(fields: [user_id], references: [id])
 }
@@ -71,14 +72,16 @@ model Borrow {
   amount                 Decimal
   collateral_amount      Decimal
   collateral_asset       String
-  base_interest_rate     Decimal   @db.Decimal(5, 2)
-  adjusted_interest_rate Decimal   @db.Decimal(5, 2)
+  base_interest_rate     Decimal   @db.Decimal(6, 4)
+  adjusted_interest_rate Decimal   @db.Decimal(6, 4)
   status                 String
   tx_hash                String
   borrowed_at            DateTime  @default(now())
   repaid_at              DateTime?
   wallet_address         String
   repaid_amount          Decimal?  @db.Decimal
+  onchain_id             BigInt?
+  borrow_duration        BigInt?
   pool                   Pool      @relation(fields: [pool_id], references: [id])
   user                   User      @relation(fields: [user_id], references: [id])
 }

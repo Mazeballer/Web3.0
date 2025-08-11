@@ -4,47 +4,33 @@ import { NextResponse } from 'next/server';
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const email = searchParams.get('email');
-
-  if (!email) {
-    return new NextResponse('Missing email', { status: 400 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (!user) {
-    return new NextResponse('User not found', { status: 404 });
-  }
+  if (!email) return new NextResponse('Missing email', { status: 400 });
 
   const deposits = await prisma.deposit.findMany({
     where: {
-      user_id: user.id,
-      withdraw_at: null, // ✅ Correct filter location
-    },
-    include: {
-      pool: true,
+      user: { email },
+      withdraw_at: null,
     },
   });
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const APY = 0.08;
-  const dailyRate = APY / 365;
-
   let totalEarned = 0;
 
-  for (const deposit of deposits) {
-    const depositDate = new Date(deposit.deposited_at);
-    const effectiveStartDate =
-      depositDate > startOfMonth ? depositDate : startOfMonth;
+  for (const d of deposits) {
+    const apyBps = Number(d.apy_bps ?? BigInt(0));
+    const apyDecimal = apyBps / 10_000;
+    const dailyRate = apyDecimal / 365;
 
+    const depositedAt = new Date(d.deposited_at);
+    const effectiveStart =
+      depositedAt > startOfMonth ? depositedAt : startOfMonth;
     const daysHeld =
-      (now.getTime() - effectiveStartDate.getTime()) / (1000 * 60 * 60 * 24);
+      (now.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24);
     if (daysHeld <= 0) continue;
 
-    const earned =
-      Number(deposit.amount) * (Math.pow(1 + dailyRate, daysHeld) - 1);
+    const principal = Number(d.amount);
+    const earned = principal * (Math.pow(1 + dailyRate, daysHeld) - 1);
     totalEarned += earned;
   }
 

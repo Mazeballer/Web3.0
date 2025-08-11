@@ -1,50 +1,43 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const { email, depositId, amount, interest } = body;
+  const { email, depositId, amount, interest } = await req.json();
 
-  if (!email || !depositId || amount == null || interest == null) {
+  if (!email || depositId == null || amount == null || interest == null) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // 1) Find deposit by on-chain id + user email
+    const deposit = await prisma.deposit.findFirst({
+      where: { onchain_id: Number(depositId), user: { email } },
     });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const deposit = await prisma.deposit.findUnique({
-      where: { id: depositId },
-    });
-
-    if (!deposit || deposit.user_id !== user.id) {
+    if (!deposit) {
       return NextResponse.json(
-        { error: 'Deposit not found or does not belong to user' },
-        { status: 403 }
+        { error: 'Deposit not found or not yours' },
+        { status: 404 }
       );
     }
-
     if (deposit.withdraw_at) {
-      return NextResponse.json(
-        { error: 'Deposit already withdrawn' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Already withdrawn' }, { status: 400 });
     }
 
-    // 1. Update the deposit record
+    const principalDec = new Prisma.Decimal(amount);
+    const interestDec = new Prisma.Decimal(interest);
+    const totalPayout = principalDec.plus(interestDec);
+
+    // 2) Update withdraw_at and store realized APY (interest)
     await prisma.deposit.update({
-      where: { id: depositId },
+      where: { id: deposit.id },
       data: {
         withdraw_at: new Date(),
+        accumulated_apy: totalPayout,
       },
     });
 
-    // 2. Update the pool liquidity
+    // 3) Decrement pool liquidity by principal + interest
     await prisma.pool.update({
       where: { id: deposit.pool_id },
       data: {

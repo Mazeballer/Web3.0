@@ -74,12 +74,6 @@ const reasonMeta = {
     icon: Lock,
     category: "reward",
   },
-  "Reliable lending record": {
-    description:
-      "5 successful lending cycles without early withdrawal or dispute",
-    icon: Users,
-    category: "reward",
-  },
 
   // ❌ Punishment Rules
   "Late payment": {
@@ -100,11 +94,6 @@ const reasonMeta = {
   "Over-borrowing": {
     description: "Borrowed more than 90% of assigned credit limit",
     icon: CircleSlash,
-    category: "punishment",
-  },
-  "Incomplete KYC > 14 days": {
-    description: "KYC not completed within 14 days of account creation",
-    icon: Ban,
     category: "punishment",
   },
   "Early withdrawal from lending pool": {
@@ -159,13 +148,6 @@ const improvementTips = [
     impact: "+35",
     difficulty: "Medium",
   },
-  {
-    title: "🧑‍🤝‍🧑 Reliable lending record",
-    description:
-      "5 successful lending cycles without early withdrawal or dispute",
-    impact: "+40",
-    difficulty: "Medium",
-  },
 ];
 
 const punishmentRules = [
@@ -188,11 +170,6 @@ const punishmentRules = [
     title: "⚠️ Over-borrowing",
     description: "Borrowed more than 90% of assigned credit limit",
     impact: "-25",
-  },
-  {
-    title: "📵 Incomplete KYC > 14 days",
-    description: "KYC not completed within 14 days of account creation",
-    impact: "-15",
   },
   {
     title: "💸 Early withdrawal from lending pool",
