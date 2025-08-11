@@ -203,7 +203,6 @@ export default function RepaymentsPage() {
       const borrowedAt = new Date(loan.borrowed_at);
       const durationMonths = Number(loan.borrow_duration) || 0;
       const dueDate = addMonths(borrowedAt, durationMonths);
-
       const repayWei = loan.repayWei ?? loan.repay_amount_wei ?? null;
 
       return {
@@ -233,6 +232,13 @@ export default function RepaymentsPage() {
         return (order as any)[a.status] - (order as any)[b.status];
       return a.dueDate.getTime() - b.dueDate.getTime(); // now safe
     });
+
+  // Only those due within the next 30 days (>=0 and <=30)
+  const upcomingDueSoon = upcomingPaymentsSafe.filter((p) => {
+    if (!p.dueDate || isNaN(p.dueDate.getTime())) return false;
+    const days = differenceInDays(p.dueDate, new Date());
+    return days <= 30;
+  });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -488,7 +494,7 @@ export default function RepaymentsPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               {totalOutstanding !== null
-                ? `$${totalOutstanding.toLocaleString()}`
+                ? `${totalOutstanding.toLocaleString()} GO`
                 : "Loading..."}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -548,25 +554,32 @@ export default function RepaymentsPage() {
           <CardDescription>Payments due in the next 30 days</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {upcomingPaymentsSafe.length === 0 && (
+          <div
+            className={
+              "space-y-4 " +
+              (upcomingDueSoon.length > 3
+                ? "max-h-[420px] overflow-y-auto pr-2" // scroll if >3
+                : "")
+            }
+          >
+            {upcomingDueSoon.length === 0 && (
               <div className="text-muted-foreground text-sm">
                 No upcoming payments.
               </div>
             )}
 
-            {upcomingPaymentsSafe.map((payment) => (
+            {upcomingDueSoon.map((payment) => (
               <div
                 key={payment.id}
                 className="flex items-center justify-between p-4 border rounded-lg"
               >
                 <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold uppercase">
                     {payment.asset.slice(0, 2)}
                   </div>
                   <div>
                     <div className="font-medium">
-                      {payment.asset} Loan #
+                      {payment.asset.toUpperCase()} Loan #
                       {payment.onChainLoanId ??
                         payment.on_chain_loan_id ??
                         payment.id}
@@ -600,7 +613,7 @@ export default function RepaymentsPage() {
                           payment.onChainLoanId ?? payment.on_chain_loan_id,
                         repayWei: payment.repayWei ?? payment.repay_amount_wei,
                         amountEth: payment.amountEth ?? payment.amount,
-                        borrower: payment.borrower, // <-- pass borrower
+                        borrower: payment.borrower,
                         collateralWei: payment.collateralWei,
                       })
                     }
@@ -623,7 +636,14 @@ export default function RepaymentsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div
+            className={
+              "space-y-4 " +
+              (upcomingPaymentsSafe.length > 3
+                ? "max-h-[540px] overflow-y-auto pr-2" // scroll if >3
+                : "")
+            }
+          >
             {upcomingPaymentsSafe.length === 0 && (
               <div className="text-muted-foreground text-sm">
                 No active loans.
@@ -641,7 +661,8 @@ export default function RepaymentsPage() {
                       </div>
                       <div>
                         <div className="font-semibold text-lg">
-                          {loan.asset} Loan #{loan.onChainLoanId ?? loan.id}
+                          {loan.asset.toUpperCase()} Loan #
+                          {loan.onChainLoanId ?? loan.id}
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
                           <span>Due {format(loan.dueDate, "yyyy-MM-dd")}</span>
@@ -692,19 +713,25 @@ export default function RepaymentsPage() {
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">
-                        Repay (wei)
+                        Repay (GO)
                       </div>
                       <div className="font-semibold">
-                        {loan.repayWei ? loan.repayWei.toString() : "—"}
+                        {loan.repayWei
+                          ? `${Number(
+                              formatEther(BigInt(loan.repayWei))
+                            ).toLocaleString()} GO`
+                          : "—"}
                       </div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">
-                        Collateral (wei)
+                        Collateral (GO)
                       </div>
                       <div className="font-semibold">
                         {loan.collateralWei
-                          ? loan.collateralWei.toString()
+                          ? `${Number(
+                              formatEther(BigInt(loan.collateralWei))
+                            ).toLocaleString()} GO`
                           : "—"}
                       </div>
                     </div>
@@ -720,17 +747,6 @@ export default function RepaymentsPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          // Placeholder “details” action if you want to wire a modal later
-                          console.log("View details for", loan.id);
-                        }}
-                      >
-                        View Details
-                      </Button>
-
                       <Button
                         size="sm"
                         className="gradient-primary text-white"
@@ -784,11 +800,6 @@ export default function RepaymentsPage() {
                   : "—"}
               </span>
             </div>
-
-            <Button variant="outline">
-              <TrendingDown className="h-4 w-4 mr-2" />
-              Set Up Auto-Pay
-            </Button>
           </div>
         </CardContent>
       </Card>
