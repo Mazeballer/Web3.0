@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useSession } from "next-auth/react";
 
 import {
   Wallet as WalletIcon,
@@ -25,10 +26,15 @@ import {
 
 import { useAppKit } from "@reown/appkit/react";
 import { useAccount, useBalance } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
   // appkit hook
   const { open } = useAppKit();
+  const { data: session } = useSession();
+  const userEmail = session?.user?.email;
+  const [loanHistory, setLoanHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // wagmi hooks
   const { address, isConnected } = useAccount();
@@ -45,16 +51,132 @@ export default function Dashboard() {
     ? parseFloat(balanceData.formatted).toFixed(4)
     : "0.0000";
 
-  const mockData = {
-    trustScore: 750,
-    totalBorrowed: 12500,
-    totalLent: 8750,
+  const [creditScore, setCreditScore] = useState<number | null>(null);
+  const [totalBorrowed, setTotalBorrowed] = useState(0);
+  const [collateralRatio, setcollateralRatio] = useState(0);
+
+  useEffect(() => {
+    const fetchCreditScore = async () => {
+      try {
+        const res = await fetch("/api/credit-score/get", {
+          method: "GET",
+          credentials: "include", // 👈 send cookies/session
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch credit score");
+
+        const data = await res.json();
+        setCreditScore(data.score);
+      } catch (error) {
+        console.error("Error fetching credit score:", error);
+        setCreditScore(0);
+      }
+    };
+
+    async function fetchBorrowed() {
+      const res = await fetch("/api/borrow/total");
+      const data = await res.json();
+      setTotalBorrowed(data.totalBorrowed);
+    }
+
+    fetchBorrowed();
+    fetchCreditScore();
+  }, []);
+
+  function getInterestRate(creditScore: number): number {
+    if (creditScore >= 700) {
+      return 0.8; // 🟩 Elite
+    } else if (creditScore >= 500) {
+      return 1; // 🟨 Trusted
+    } else if (creditScore >= 300) {
+      return 1.3; // 🟧 Average
+    } else if (creditScore >= 100) {
+      return 1.6; // 🟥 Low
+    } else {
+      return 2; // ⬛ Risky
+    }
+  }
+
+  function getMaxLoanFromScore(score: number): number {
+    if (score >= 700) return 50000;
+    if (score >= 500) return 30000;
+    if (score >= 300) return 15000;
+    if (score >= 100) return 10000;
+    return 5000; // for score 0–99
+  }
+
+  useEffect(() => {
+    if (creditScore == null) {
+      setcollateralRatio(180); // ⬛ New/Risky: 150% – 200%
+    } else if (creditScore >= 700) {
+      setcollateralRatio(50); // 🟩 Elite: 50% – 75%
+    } else if (creditScore >= 500) {
+      setcollateralRatio(75); // 🟨 Trusted: 75% – 100%
+    } else if (creditScore >= 300) {
+      setcollateralRatio(100); // 🟧 Average: 100%
+    } else if (creditScore >= 100) {
+      setcollateralRatio(150); // 🟥 Low: 120% – 150%
+    } else {
+      setcollateralRatio(180); // ⬛ New/Risky: 150% – 200%
+    }
+  }, [creditScore]);
+
+  const scoreCategory =
+    creditScore == null
+      ? "New"
+      : creditScore >= 700 && creditScore <= 850
+      ? "Elite"
+      : creditScore >= 500 && creditScore <= 699
+      ? "Trusted"
+      : creditScore >= 300 && creditScore <= 499
+      ? "Average"
+      : creditScore >= 100
+      ? "Low"
+      : "New";
+
+  type Totals = {
+    totalDeposited: string;
+    totalInterest: string;
+    totalBalance: string;
+  };
+
+  const { data: totalLentData } = useQuery<Totals>({
+    queryKey: ["totalLent", userEmail],
+    queryFn: async () => {
+      const res = await fetch(`/api/deposits/total?email=${userEmail}`);
+      if (!res.ok) throw new Error("Failed to load totals");
+      return (await res.json()) as Totals;
+    },
+    enabled: !!userEmail,
+  });
+
+  useEffect(() => {
+    const fetchLoanHistory = async () => {
+      try {
+        const res = await fetch("/api/loan-history/get-history-list");
+        const data = await res.json();
+        // sort by date if your API returns a date field
+
+        setLoanHistory(data.slice(0, 3)); // top 3 most recent
+      } catch (err) {
+        console.error("Failed to fetch loan history", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLoanHistory();
+  }, []);
+
+  const userData = {
+    creditScore: creditScore ?? "Loading..",
+    creditCategory: scoreCategory,
+    totalBorrowed: totalBorrowed,
+    totalLent: totalLentData?.totalDeposited,
     eligibilityScore: 85,
-    recentActivity: [
-      { type: "lend", amount: 1000, token: "USDC", date: "2024-01-15" },
-      { type: "borrow", amount: 500, token: "ETH", date: "2024-01-14" },
-      { type: "repay", amount: 250, token: "DAI", date: "2024-01-13" },
-    ],
+    maxLoan: getMaxLoanFromScore(creditScore ?? 0),
+    interestRate: getInterestRate(creditScore ?? 0),
+    collateral: collateralRatio,
   };
 
   return (
@@ -106,24 +228,24 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Trust Score */}
+            {/* Credit Score */}
             <Card className="gradient-card hover:shadow-lg transition-all duration-300">
               <CardHeader className="flex items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Trust Score
+                  Credit Score
                 </CardTitle>
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-emerald-600">
-                  {mockData.trustScore}
+                  {userData.creditScore}
                 </div>
                 <div className="flex items-center space-x-2 mt-2">
                   <Progress
-                    value={mockData.trustScore / 10}
+                    value={userData.creditScore / 10}
                     className="flex-1"
                   />
-                  <Badge variant="secondary">Excellent</Badge>
+                  <Badge variant="secondary">{userData.creditCategory}</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -138,7 +260,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ${mockData.totalBorrowed.toLocaleString()}
+                  ${userData.totalBorrowed.toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Across 3 active loans
@@ -156,7 +278,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ${mockData.totalLent.toLocaleString()}
+                  ${userData.totalLent?.toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Earning 8.5% APY
@@ -182,25 +304,31 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Eligibility Score</span>
                   <span className="text-2xl font-bold text-emerald-600">
-                    {mockData.eligibilityScore}%
+                    {userData.eligibilityScore}%
                   </span>
                 </div>
-                <Progress value={mockData.eligibilityScore} className="h-2" />
+                <Progress value={userData.eligibilityScore} className="h-2" />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                   <div className="text-center p-4 rounded-lg bg-muted/50">
-                    <div className="text-lg font-bold">$25,000</div>
+                    <div className="text-lg font-bold">
+                      ${userData.maxLoan.toLocaleString()}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       Max Loan Amount
                     </div>
                   </div>
                   <div className="text-center p-4 rounded-lg bg-muted/50">
-                    <div className="text-lg font-bold">4.5%</div>
+                    <div className="text-lg font-bold">
+                      {userData.interestRate}%
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       Your Interest Rate
                     </div>
                   </div>
                   <div className="text-center p-4 rounded-lg bg-muted/50">
-                    <div className="text-lg font-bold">120%</div>
+                    <div className="text-lg font-bold">
+                      {userData.collateral}%
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       Collateral Ratio
                     </div>
@@ -214,47 +342,49 @@ export default function Dashboard() {
           <Card className="gradient-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Recent Activity
+                Recent Loan History
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {mockData.recentActivity.map((act, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
-                  >
-                    <div className="flex items-center gap-3">
-                      {act.type === "lend" ? (
-                        <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                      ) : act.type === "borrow" ? (
-                        <ArrowDownRight className="h-4 w-4 text-red-500" />
-                      ) : (
-                        <DollarSign className="h-4 w-4 text-blue-500" />
-                      )}
-                      <div>
-                        <div className="font-medium capitalize">{act.type}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {act.date}
+              {loading ? (
+                <p className="text-muted-foreground text-sm">Loading...</p>
+              ) : loanHistory.length > 0 ? (
+                <div className="space-y-4">
+                  {loanHistory.map((loan, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                    >
+                      <div className="flex items-center gap-3">
+                        {loan.type === "lend" ? (
+                          <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+                        ) : loan.type === "borrow" ? (
+                          <ArrowDownRight className="h-4 w-4 text-red-500" />
+                        ) : (
+                          <DollarSign className="h-4 w-4 text-blue-500" />
+                        )}
+                        <div>
+                          <div className="font-medium capitalize">
+                            {loan.type}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">
-                        {act.amount} {act.token}
+                      <div className="text-right">
+                        <div className="font-medium">
+                          {loan.amount} {loan.token}
+                        </div>
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {loan.status}
+                        </Badge>
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        {act.type === "lend"
-                          ? "Completed"
-                          : act.type === "borrow"
-                          ? "Active"
-                          : "Paid"}
-                      </Badge>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  No recent loans found.
+                </p>
+              )}
             </CardContent>
           </Card>
         </>
