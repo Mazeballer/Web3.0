@@ -14,7 +14,7 @@ function normalizeLoans(loans: any[]) {
         ? Number(l.borrow_duration)
         : Number(l.borrow_duration ?? 0);
 
-    const totalDue = amount + amount * (ratePct / 100) * months;
+    const totalDue = amount + amount * (ratePct) * months;
 
     return {
       id: l.id,
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
             ? Number(b.borrow_duration)
             : Number(b.borrow_duration ?? 0);
 
-        const totalDue = principal + principal * (ratePct / 100) * months;
+        const totalDue = principal + principal * (ratePct) * months;
         return sum + totalDue;
       }, 0);
 
@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
         const dueDate = addMonthsSafe(new Date(l.borrowed_at), months);
 
         // Monetary total due (principal + monthly simple interest * months)
-        const totalDue = principal + principal * (ratePct / 100) * months;
+        const totalDue = principal + principal * (ratePct) * months;
 
         if (l.status === "completed") {
           const repaidAt = l.repaid_at ? new Date(l.repaid_at) : null;

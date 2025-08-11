@@ -40,6 +40,7 @@ export async function GET(req: Request) {
         daysHeld > 0 ? principal * (Math.pow(1 + dailyRate, daysHeld) - 1) : 0;
 
       return {
+        id: d.id,
         depositId: Number(d.onchain_id ?? d.id),
         token: d.pool.asset_symbol,
         yourDeposit: principal,

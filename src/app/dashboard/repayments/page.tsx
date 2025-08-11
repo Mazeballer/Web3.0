@@ -518,7 +518,7 @@ export default function RepaymentsPage() {
                   <div className="text-right">
                     <div className="font-semibold">
                       {payment.amountEth
-                        ? `${payment.amountEth} ETH`
+                        ? `${payment.amountEth} GO`
                         : `$${payment.amount}`}
                     </div>
                     {getStatusBadge(payment.status)}
@@ -598,7 +598,7 @@ export default function RepaymentsPage() {
 
                     <div className="text-right">
                       <div className="text-2xl font-bold">
-                        {loan.amountEth ? `${loan.amountEth} ETH` : "—"}
+                        {loan.amountEth ? `${loan.amountEth} GO` : "—"}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         Amount due
@@ -717,7 +717,7 @@ export default function RepaymentsPage() {
               Total needed:&nbsp;
               <span className="font-semibold">
                 {activeToPay.length
-                  ? `${totalRepayEth.toLocaleString()} ETH`
+                  ? `${totalRepayEth.toLocaleString()} GO`
                   : "—"}
               </span>
             </div>
