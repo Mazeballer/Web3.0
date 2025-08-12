@@ -54,7 +54,7 @@ export default function FAQPage() {
       </section>
 
       {/* Content */}
-      <section className=" pb-16">
+      <section className="mt-16 pb-16">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left rail: quick topics */}
