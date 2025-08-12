@@ -119,15 +119,15 @@ export default function BorrowPage() {
 
   useEffect(() => {
     if (overallScore >= 700) {
-      setcollateralRatio(50); // 🟩 Elite: 50% – 75%
+      setcollateralRatio(150); // 🟩 Elite: 50% – 75%
     } else if (overallScore >= 500) {
-      setcollateralRatio(75); // 🟨 Trusted: 75% – 100%
+      setcollateralRatio(160); // 🟨 Trusted: 75% – 100%
     } else if (overallScore >= 300) {
-      setcollateralRatio(100); // 🟧 Average: 100%
+      setcollateralRatio(175); // 🟧 Average: 100%
     } else if (overallScore >= 100) {
-      setcollateralRatio(150); // 🟥 Low: 120% – 150%
+      setcollateralRatio(190); // 🟥 Low: 120% – 150%
     } else {
-      setcollateralRatio(180); // ⬛ New/Risky: 150% – 200%
+      setcollateralRatio(200); // ⬛ New/Risky: 150% – 200%
     }
   }, [overallScore]);
 
@@ -304,7 +304,6 @@ export default function BorrowPage() {
       setCollateralToken("");
       setLoanDuration("");
       setSelectedPool(null);
-      setUpdatedInfo(false);
 
       if (totalBorrowed / getMaxLoanFromScore(overallScore) > 0.9) {
         try {
@@ -357,6 +356,7 @@ export default function BorrowPage() {
         console.error("Error calling high-loan-frequency API:", err);
       }
 
+      setUpdatedInfo(false);
       setOpenDialog(false);
     } catch (error) {
       toast({

@@ -72,13 +72,13 @@ export async function POST() {
             });
             await tx.creditScore.update({
                 where: { user_id: user.id },
-                data: { score: { increment: 50 } },
+                data: { score: { increment: 20 } },
             });
         });
 
         return NextResponse.json({
             awarded: true,
-            points: 50,
+            points: 20,
             reason: "3 Consecutive good loans",
         });
 

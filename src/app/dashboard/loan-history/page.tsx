@@ -148,7 +148,7 @@ export default function LoanHistoryPage() {
 
   const totalLoans = loanHistory.length;
   const activeLoans = loanHistory.filter(
-    (loan) => loan.status === "active"
+    (loan) => loan.status === "active" || loan.status === "late"
   ).length;
   const completedLoans = loanHistory.filter(
     (loan) => loan.status === "completed"
@@ -289,80 +289,62 @@ export default function LoanHistoryPage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Loan ID</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Wallet Address</TableHead>
-                  <TableHead>Accumulated APY</TableHead>
-                  <TableHead>Progress</TableHead>
-                  {/* <TableHead>Duration</TableHead> */}
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredHistory.map((loan) => (
-                  <TableRow key={loan.id}>
-                    <TableCell className="font-mono text-sm">
-                      {loan.id}
-                    </TableCell>
-                    <TableCell className="capitalize">{loan.type}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">
-                        {loan.amount} {loan.token}
-                      </div>
-                    </TableCell>
-                    <TableCell>{loan.account}</TableCell>
-                    <TableCell>
-                      {loan.type === "lend" ? (
-                        <div className="space-y-1 text-xs">
-                          <div className="text-emerald-400">{loan.apy}</div>
+            <div className="max-h-[500px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Loan ID</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Wallet Address</TableHead>
+                    <TableHead>Accumulated APY</TableHead>
+                    {/* <TableHead>Duration</TableHead> */}
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredHistory.map((loan) => (
+                    <TableRow key={loan.id}>
+                      <TableCell className="font-mono text-sm">
+                        {loan.id}
+                      </TableCell>
+                      <TableCell className="capitalize">{loan.type}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">
+                          {loan.amount} {loan.token}
                         </div>
-                      ) : (
-                        <span className="text-muted-foreground">–</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {loan.type === "borrow" ? (
-                        <div className="space-y-1 text-xs">
-                          <div className="text-muted-foreground">
-                            Repaid: {loan.repaid}/{loan.amount} {loan.token}
+                      </TableCell>
+                      <TableCell>{loan.account}</TableCell>
+                      <TableCell>
+                        {loan.type === "lend" ? (
+                          <div className="space-y-1 text-xs">
+                            <div className="text-emerald-400">{loan.apy}</div>
                           </div>
-                          <div className="w-20 bg-muted rounded-full h-2">
-                            <div
-                              className="bg-blue-500 h-2 rounded-full transition-all"
-                              style={{
-                                width: `${(loan.repaid / loan.amount) * 100}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">–</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(loan.status)}</TableCell>
-                    <TableCell>
-                      {loan.type === "borrow" &&
-                        (loan.status === "active" ||
-                          loan.status === "late") && (
+                        ) : (
+                          <span className="text-muted-foreground">–</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(loan.status)}</TableCell>
+                      <TableCell>
+                        {loan.type === "borrow" &&
+                          (loan.status === "active" ||
+                            loan.status === "late") && (
+                            <Button size="sm" variant="outline">
+                              Repay
+                            </Button>
+                          )}
+                        {loan.type === "lend" && loan.status === "active" && (
                           <Button size="sm" variant="outline">
-                            Repay
+                            Withdraw
                           </Button>
                         )}
-                      {loan.type === "lend" && loan.status === "active" && (
-                        <Button size="sm" variant="outline">
-                          Withdraw
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           {filteredHistory.length === 0 && (

@@ -22,17 +22,9 @@ const addMonthsSafe = (d: Date, months: number) => {
 // Optional fallback map if any TrustPoint row has null/0 points:
 const REASON_POINTS: Record<string, number> = {
   "On-time loan repayment": 20,
-  "3 Consecutive good loans": 50,
-  "Verified identity (KYC)": 20,
-  "Lending funds ≥ 30 days": 15,
-  "Consistent lending over 3 months": 30,
-  "No withdrawal from lending pool ≥ 60 days": 20,
-
+  "3 Consecutive good loans": 20,
   "Late payment": 20, // will be subtracted
   "Missed repayment > 30 days": 60,
-  "High loan frequency": 20,
-  "Over-borrowing": 25,
-  "Early withdrawal from lending pool": 20,
 };
 
 function normalizeLoans(loans: any[]) {
@@ -138,16 +130,17 @@ export async function GET(req: NextRequest) {
       // ===== Credit Impact from TrustPoint (rewards − punishments) =====
       // NOTE: Adjust model name if your Prisma model differs (e.g., trustPoint or Trustpoint).
       const trustRows = await prisma.trustPoint.findMany({
-        where: { user_id: user.id },
-        select: { points: true, status: true, reason: true },
-        orderBy: { awarded_at: "asc" }, // optional, if you ever need ordering
+        where: {
+          user_id: user.id,
+          reason: { in: Object.keys(REASON_POINTS) } // only these reasons
+        },
+        select: { reason: true, status: true },
       });
 
       const creditImpactRaw = trustRows.reduce((sum, row) => {
-        const base = Number(row.points ?? 0);
-        // fallback if points missing or 0, use the reason map
-        const pts = base > 0 ? base : REASON_POINTS[row.reason] ?? 0;
-        const signed = row.status?.toLowerCase() === "punishment" ? -pts : pts;
+        const pts = REASON_POINTS[row.reason] ?? 0; // map reason to points
+        const signed =
+          row.status?.toLowerCase() === "punishment" ? -pts : pts;
         return sum + signed;
       }, 0);
 
