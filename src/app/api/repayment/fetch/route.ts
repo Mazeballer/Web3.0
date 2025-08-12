@@ -19,10 +19,26 @@ const addMonthsSafe = (d: Date, months: number) => {
   return x;
 };
 
+// Optional fallback map if any TrustPoint row has null/0 points:
+const REASON_POINTS: Record<string, number> = {
+  "On-time loan repayment": 20,
+  "3 Consecutive good loans": 50,
+  "Verified identity (KYC)": 20,
+  "Lending funds ≥ 30 days": 15,
+  "Consistent lending over 3 months": 30,
+  "No withdrawal from lending pool ≥ 60 days": 20,
+
+  "Late payment": 20, // will be subtracted
+  "Missed repayment > 30 days": 60,
+  "High loan frequency": 20,
+  "Over-borrowing": 25,
+  "Early withdrawal from lending pool": 20,
+};
+
 function normalizeLoans(loans: any[]) {
   return loans.map((l: any) => {
-    const amount = Number(l.amount); // principal (ETH/GO)
-    const r = toMonthlyRate(l.adjusted_interest_rate); // normalize rate
+    const amount = Number(l.amount);
+    const r = toMonthlyRate(l.adjusted_interest_rate);
     const months = monthsNum(l.borrow_duration);
     const totalDue = amount + amount * r * months;
 
@@ -35,7 +51,7 @@ function normalizeLoans(loans: any[]) {
       onChainLoanId: l.onchain_id != null ? Number(l.onchain_id) : null,
       borrower: l.wallet_address as `0x${string}`,
       amount,
-      totalDue, // optional display
+      totalDue,
       repayWei: parseEther(String(totalDue)).toString(),
       collateralWei: parseEther(String(l.collateral_amount ?? 0)).toString(),
     };
@@ -53,7 +69,7 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, verified: true },
+    select: { id: true },
   });
   if (!user) return NextResponse.json({ totalOutstanding: 0 }, { status: 404 });
 
@@ -77,108 +93,67 @@ export async function GET(req: NextRequest) {
         return sum + totalDue;
       }, 0);
 
-      // ===== Completed loans for on-time / consecutive logic =====
-      const completedLoans = await prisma.borrow.findMany({
-        where: { user_id: user.id, status: "completed" },
-        orderBy: { repaid_at: "asc" }, // chronological for streak calc
+      // ===== Borrow-based counters (for display) =====
+      const allLoans = await prisma.borrow.findMany({
+        where: { user_id: user.id },
         select: {
           borrowed_at: true,
           borrow_duration: true,
           amount: true,
           adjusted_interest_rate: true,
+          status: true,
           repaid_at: true,
           repaid_amount: true,
         },
       });
 
-      // Compute per-loan on-time/full flags
-      const onTimeFlags: boolean[] = [];
-      for (const l of completedLoans) {
+      const now = new Date();
+      let onTimePayments = 0;
+      let latePayments = 0;
+      let overdueActive = 0;
+
+      for (const l of allLoans) {
         const principal = Number(l.amount ?? 0);
         const r = toMonthlyRate(l.adjusted_interest_rate);
         const months = monthsNum(l.borrow_duration);
         const dueDate = addMonthsSafe(new Date(l.borrowed_at), months);
         const totalDue = principal + principal * r * months;
 
-        const repaidAt = l.repaid_at ? new Date(l.repaid_at) : null;
-        const repaidAmt = Number(l.repaid_amount ?? 0);
-        const paidEnough = repaidAmt + 1e-9 >= totalDue;
-        const paidOnTime = !!repaidAt && repaidAt <= dueDate;
+        if (l.status === "completed") {
+          const repaidAt = l.repaid_at ? new Date(l.repaid_at) : null;
+          const repaidAmt = Number(l.repaid_amount ?? 0);
+          const paidEnough = repaidAmt + 1e-9 >= totalDue;
+          const paidOnTime = !!repaidAt && repaidAt <= dueDate;
 
-        onTimeFlags.push(paidEnough && paidOnTime);
-      }
-      const onTimePayments = onTimeFlags.filter(Boolean).length;
-
-      // Count non-overlapping triplets of consecutive on-time loans
-      let consecutiveTriplets = 0;
-      let run = 0;
-      for (const ok of onTimeFlags) {
-        run = ok ? run + 1 : 0;
-        if (run === 3) {
-          consecutiveTriplets += 1;
-          run = 0; // non-overlapping triplets
+          if (paidEnough && paidOnTime) onTimePayments++;
+          else latePayments++;
+        } else if (
+          (l.status === "active" || l.status === "late") &&
+          now > dueDate
+        ) {
+          overdueActive++;
         }
       }
 
-      // ===== Overdue active/late count for display =====
-      const allOpen = await prisma.borrow.findMany({
-        where: { user_id: user.id, status: { in: ["active", "late"] } },
-        select: {
-          borrowed_at: true,
-          borrow_duration: true,
-          status: true,
-        },
-      });
-      const now = new Date();
-      let overdueActive = 0;
-      for (const l of allOpen) {
-        const months = monthsNum(l.borrow_duration);
-        const dueDate = addMonthsSafe(new Date(l.borrowed_at), months);
-        if (now > dueDate) overdueActive++;
-      }
-      // Late payments (completed but late/underpaid) for display only
-      const latePayments = completedLoans.length - onTimePayments;
-
-      // ===== TrustPoint base sum & counts by reason =====
+      // ===== Credit Impact from TrustPoint (rewards − punishments) =====
+      // NOTE: Adjust model name if your Prisma model differs (e.g., trustPoint or Trustpoint).
       const trustRows = await prisma.trustPoint.findMany({
         where: { user_id: user.id },
         select: { points: true, status: true, reason: true },
+        orderBy: { awarded_at: "asc" }, // optional, if you ever need ordering
       });
 
-      const trustBase = trustRows.reduce((sum, row) => {
-        const pts = Number(row.points ?? 0) || 0;
+      const creditImpactRaw = trustRows.reduce((sum, row) => {
+        const base = Number(row.points ?? 0);
+        // fallback if points missing or 0, use the reason map
+        const pts = base > 0 ? base : REASON_POINTS[row.reason] ?? 0;
         const signed = row.status?.toLowerCase() === "punishment" ? -pts : pts;
         return sum + signed;
       }, 0);
 
-      // Count how many times these achievements are already logged
-      const reasonCount = trustRows.reduce<Record<string, number>>((acc, r) => {
-        const key = (r.reason || "").trim();
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-      }, {});
-
-      const loggedOnTime = reasonCount["On-time loan repayment"] || 0;
-      const logged3Consec = reasonCount["3 Consecutive good loans"] || 0;
-      const loggedKYC = reasonCount["Verified identity (KYC)"] || 0;
-
-      // ===== Derive extra points from Borrow/User that are NOT yet logged =====
-      let derivedExtra = 0;
-
-      // On-time (+20 each) not yet in TrustPoint
-      const extraOnTime = Math.max(0, onTimePayments - loggedOnTime);
-      derivedExtra += extraOnTime * 20;
-
-      // 3 consecutive (+50 per non-overlapping triplet) not yet in TrustPoint
-      const extraTriplets = Math.max(0, consecutiveTriplets - logged3Consec);
-      derivedExtra += extraTriplets * 50;
-
-      // Verified identity (KYC) from User table (+20) if verified and not logged
-      if (user.verified && loggedKYC === 0) {
-        derivedExtra += 20;
-      }
-
-      const creditImpact = trustBase + derivedExtra;
+      // If you want a hard cap, uncomment next line:
+      // const creditImpact = Math.max(-999, Math.min(999, creditImpactRaw));
+      const creditImpact = creditImpactRaw;
 
       return NextResponse.json({
         totalOutstanding,
@@ -187,11 +162,6 @@ export async function GET(req: NextRequest) {
         onTimePayments,
         latePayments,
         overdueActive,
-        // Optional debug fields (comment out in prod)
-        // trustBase,
-        // derivedExtra,
-        // extraOnTime,
-        // extraTriplets,
       });
     }
 

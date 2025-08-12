@@ -65,6 +65,7 @@ export default function RepaymentsPage() {
   const { data: walletClient } = useWalletClient();
   const [payingId, setPayingId] = useState<number | null>(null);
   const [creditImpact, setCreditImpact] = useState<number | null>(null);
+  const [impactUpdate, setImpactUpdate] = useState(false);
   const [onTimePayments, setOnTimePayments] = useState<number>(0);
   const [latePayments, setLatePayments] = useState<number>(0);
   const [overdueActive, setOverdueActive] = useState<number>(0);
@@ -102,9 +103,20 @@ export default function RepaymentsPage() {
       .then((res) => res.json())
       .then((data) => {
         setLoans(Array.isArray(data) ? data : []);
+        setCreditImpact(data.creditImpact);
       })
       .catch(() => setLoans([]));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/repayment/fetch?summary=true")
+      .then((res) => res.json())
+      .then((data) => {
+        setCreditImpact(data.creditImpact);
+        setImpactUpdate(false);
+      })
+      .catch(() => setLoans([]));
+  }, [impactUpdate]);
 
   useEffect(() => {
     if (!Array.isArray(loans) || loans.length === 0) {
@@ -184,7 +196,7 @@ export default function RepaymentsPage() {
       if (data.awarded) {
         toast({
           title: "🎉 Reward Earned",
-          description: `${data.reason} (${data.pointsForDisplay} points)`,
+          description: `${data.reason} (${data.points} points)`,
           variant: "default",
         });
       }
@@ -408,6 +420,7 @@ export default function RepaymentsPage() {
 
       evaluateRepayment(loan.id);
       checkThreeGoodLoans();
+      setImpactUpdate(true);
 
       return true; // ✅ important
     } catch (e: any) {
