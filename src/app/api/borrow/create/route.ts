@@ -17,6 +17,8 @@ export async function POST(req: Request) {
     loanDuration,
   } = data;
 
+  console.log("Data: ", data);
+
   try {
     // Get user ID
     const user = await prisma.user.findUnique({

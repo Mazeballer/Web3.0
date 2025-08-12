@@ -43,11 +43,6 @@ const reasonMeta = {
     icon: Clock,
     category: "reward",
   },
-  "Full loan repayment": {
-    description: "No missed installments, all paid in full",
-    icon: DollarSign,
-    category: "reward",
-  },
   "3 Consecutive good loans": {
     description: "No late repayment for 3 loans in a row",
     icon: Calculator,
@@ -74,12 +69,6 @@ const reasonMeta = {
     icon: Lock,
     category: "reward",
   },
-  "Reliable lending record": {
-    description:
-      "5 successful lending cycles without early withdrawal or dispute",
-    icon: Users,
-    category: "reward",
-  },
 
   // ❌ Punishment Rules
   "Late payment": {
@@ -102,11 +91,6 @@ const reasonMeta = {
     icon: CircleSlash,
     category: "punishment",
   },
-  "Incomplete KYC > 14 days": {
-    description: "KYC not completed within 14 days of account creation",
-    icon: Ban,
-    category: "punishment",
-  },
   "Early withdrawal from lending pool": {
     description:
       "User removes funds from the pool before 30 days, while liquidity is still healthy",
@@ -121,12 +105,6 @@ const improvementTips = [
     description: "Per loan paid on or before due date",
     impact: "+20",
     difficulty: "Easy",
-  },
-  {
-    title: "💰 Full loan repayment",
-    description: "No missed installments, all paid in full",
-    impact: "+30",
-    difficulty: "Medium",
   },
   {
     title: "🧮 3 Consecutive good loans",
@@ -159,13 +137,6 @@ const improvementTips = [
     impact: "+35",
     difficulty: "Medium",
   },
-  {
-    title: "🧑‍🤝‍🧑 Reliable lending record",
-    description:
-      "5 successful lending cycles without early withdrawal or dispute",
-    impact: "+40",
-    difficulty: "Medium",
-  },
 ];
 
 const punishmentRules = [
@@ -188,11 +159,6 @@ const punishmentRules = [
     title: "⚠️ Over-borrowing",
     description: "Borrowed more than 90% of assigned credit limit",
     impact: "-25",
-  },
-  {
-    title: "📵 Incomplete KYC > 14 days",
-    description: "KYC not completed within 14 days of account creation",
-    impact: "-15",
   },
   {
     title: "💸 Early withdrawal from lending pool",

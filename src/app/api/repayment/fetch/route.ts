@@ -5,16 +5,42 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { parseEther } from "viem";
 
+/** Accepts 0.0125 or 1.25 and returns 0.0125. */
+const toMonthlyRate = (raw: any) => {
+  const v = Number(raw ?? 0);
+  if (!isFinite(v) || v <= 0) return 0;
+  return v > 1 ? v / 100 : v;
+};
+const monthsNum = (m: any) =>
+  typeof m === "bigint" ? Number(m) : Number(m ?? 0);
+const addMonthsSafe = (d: Date, months: number) => {
+  const x = new Date(d);
+  x.setMonth(x.getMonth() + months);
+  return x;
+};
+
+// Optional fallback map if any TrustPoint row has null/0 points:
+const REASON_POINTS: Record<string, number> = {
+  "On-time loan repayment": 20,
+  "3 Consecutive good loans": 50,
+  "Verified identity (KYC)": 20,
+  "Lending funds ≥ 30 days": 15,
+  "Consistent lending over 3 months": 30,
+  "No withdrawal from lending pool ≥ 60 days": 20,
+
+  "Late payment": 20, // will be subtracted
+  "Missed repayment > 30 days": 60,
+  "High loan frequency": 20,
+  "Over-borrowing": 25,
+  "Early withdrawal from lending pool": 20,
+};
+
 function normalizeLoans(loans: any[]) {
   return loans.map((l: any) => {
-    const amount = Number(l.amount); // principal (ETH/GO)
-    const ratePct = Number(l.adjusted_interest_rate ?? 0); // e.g. 1.25 (%)
-    const months =
-      typeof l.borrow_duration === "bigint"
-        ? Number(l.borrow_duration)
-        : Number(l.borrow_duration ?? 0);
-
-    const totalDue = amount + amount * (ratePct / 100) * months;
+    const amount = Number(l.amount);
+    const r = toMonthlyRate(l.adjusted_interest_rate);
+    const months = monthsNum(l.borrow_duration);
+    const totalDue = amount + amount * r * months;
 
     return {
       id: l.id,
@@ -25,7 +51,7 @@ function normalizeLoans(loans: any[]) {
       onChainLoanId: l.onchain_id != null ? Number(l.onchain_id) : null,
       borrower: l.wallet_address as `0x${string}`,
       amount,
-      totalDue, // optional display
+      totalDue,
       repayWei: parseEther(String(totalDue)).toString(),
       collateralWei: parseEther(String(l.collateral_amount ?? 0)).toString(),
     };
@@ -49,7 +75,7 @@ export async function GET(req: NextRequest) {
 
   try {
     if (summary === "true") {
-      // === existing outstanding calc (keep yours) ===
+      // ===== Total Outstanding (active/late) =====
       const borrowings = await prisma.borrow.findMany({
         where: { user_id: user.id, status: { in: ["active", "late"] } },
         select: {
@@ -60,36 +86,26 @@ export async function GET(req: NextRequest) {
       });
 
       const totalOutstanding = borrowings.reduce((sum, b) => {
-        const principal = Number(b.amount);
-        const ratePct = Number(b.adjusted_interest_rate ?? 0);
-        const months =
-          typeof b.borrow_duration === "bigint"
-            ? Number(b.borrow_duration)
-            : Number(b.borrow_duration ?? 0);
-
-        const totalDue = principal + principal * (ratePct / 100) * months;
+        const principal = Number(b.amount ?? 0);
+        const r = toMonthlyRate(b.adjusted_interest_rate);
+        const months = monthsNum(b.borrow_duration);
+        const totalDue = principal + principal * r * months;
         return sum + totalDue;
       }, 0);
 
-      // === NEW: credit impact metrics aligned with "Loans at Risk" ===
+      // ===== Borrow-based counters (for display) =====
       const allLoans = await prisma.borrow.findMany({
         where: { user_id: user.id },
         select: {
           borrowed_at: true,
-          borrow_duration: true, // months (BigInt|number)
-          amount: true, // principal
-          adjusted_interest_rate: true, // % per month
-          status: true, // active | late | completed
+          borrow_duration: true,
+          amount: true,
+          adjusted_interest_rate: true,
+          status: true,
           repaid_at: true,
-          repaid_amount: true, // Decimal
+          repaid_amount: true,
         },
       });
-
-      const addMonthsSafe = (d: Date, months: number) => {
-        const x = new Date(d);
-        x.setMonth(x.getMonth() + months);
-        return x;
-      };
 
       const now = new Date();
       let onTimePayments = 0;
@@ -98,31 +114,19 @@ export async function GET(req: NextRequest) {
 
       for (const l of allLoans) {
         const principal = Number(l.amount ?? 0);
-        const ratePct = Number(l.adjusted_interest_rate ?? 0); // e.g. 1.25
-        const months =
-          typeof l.borrow_duration === "bigint"
-            ? Number(l.borrow_duration)
-            : Number(l.borrow_duration ?? 0);
-
-        // Same due-date logic as Loans at Risk
+        const r = toMonthlyRate(l.adjusted_interest_rate);
+        const months = monthsNum(l.borrow_duration);
         const dueDate = addMonthsSafe(new Date(l.borrowed_at), months);
-
-        // Monetary total due (principal + monthly simple interest * months)
-        const totalDue = principal + principal * (ratePct / 100) * months;
+        const totalDue = principal + principal * r * months;
 
         if (l.status === "completed") {
           const repaidAt = l.repaid_at ? new Date(l.repaid_at) : null;
           const repaidAmt = Number(l.repaid_amount ?? 0);
-
-          const paidEnough = repaidAmt + 1e-9 >= totalDue; // tiny epsilon for Decimal→Number
+          const paidEnough = repaidAmt + 1e-9 >= totalDue;
           const paidOnTime = !!repaidAt && repaidAt <= dueDate;
 
-          if (paidEnough && paidOnTime) {
-            onTimePayments++;
-          } else {
-            // If either paid late or paid less than totalDue → count as late
-            latePayments++;
-          }
+          if (paidEnough && paidOnTime) onTimePayments++;
+          else latePayments++;
         } else if (
           (l.status === "active" || l.status === "late") &&
           now > dueDate
@@ -131,10 +135,25 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Scoring — tweak weights as you like
-      let creditImpact =
-        onTimePayments * 5 - (latePayments * 10 + overdueActive * 7);
-      creditImpact = Math.max(-99, Math.min(99, creditImpact));
+      // ===== Credit Impact from TrustPoint (rewards − punishments) =====
+      // NOTE: Adjust model name if your Prisma model differs (e.g., trustPoint or Trustpoint).
+      const trustRows = await prisma.trustPoint.findMany({
+        where: { user_id: user.id },
+        select: { points: true, status: true, reason: true },
+        orderBy: { awarded_at: "asc" }, // optional, if you ever need ordering
+      });
+
+      const creditImpactRaw = trustRows.reduce((sum, row) => {
+        const base = Number(row.points ?? 0);
+        // fallback if points missing or 0, use the reason map
+        const pts = base > 0 ? base : REASON_POINTS[row.reason] ?? 0;
+        const signed = row.status?.toLowerCase() === "punishment" ? -pts : pts;
+        return sum + signed;
+      }, 0);
+
+      // If you want a hard cap, uncomment next line:
+      // const creditImpact = Math.max(-999, Math.min(999, creditImpactRaw));
+      const creditImpact = creditImpactRaw;
 
       return NextResponse.json({
         totalOutstanding,
@@ -146,15 +165,16 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // ===== Active/Late loans list =====
     const loans = await prisma.borrow.findMany({
-      where: { user_id: user.id, status: { in: ["active", "late"] } }, // ⬅️ hide completed
+      where: { user_id: user.id, status: { in: ["active", "late"] } },
       select: {
         id: true,
         borrowed_at: true,
         borrow_duration: true,
         status: true,
         amount: true,
-        collateral_amount: true, // ⬅️ add this
+        collateral_amount: true,
         collateral_asset: true,
         wallet_address: true,
         onchain_id: true,

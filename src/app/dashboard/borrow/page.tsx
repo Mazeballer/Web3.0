@@ -61,6 +61,7 @@ export default function BorrowPage() {
   const [lendingPools, setLendingPools] = useState([]);
   const [overallScore, setOverallScore] = useState(0);
   const [collateralRatio, setcollateralRatio] = useState(0);
+  const [adjustedInterestRate, setadjustedInterestRate] = useState(0);
   const [updatedInfo, setUpdatedInfo] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [lendingPoolReady, setLendingPoolReady] = useState(false);
@@ -130,6 +131,20 @@ export default function BorrowPage() {
     }
   }, [overallScore]);
 
+  useEffect(() => {
+    if (overallScore >= 700) {
+      setadjustedInterestRate(0.008); // 🟩 Elite: 50% – 75%
+    } else if (overallScore >= 500) {
+      setadjustedInterestRate(0.01); // 🟨 Trusted: 75% – 100%
+    } else if (overallScore >= 300) {
+      setadjustedInterestRate(0.013); // 🟧 Average: 100%
+    } else if (overallScore >= 100) {
+      setadjustedInterestRate(0.016); // 🟥 Low: 120% – 150%
+    } else {
+      setadjustedInterestRate(0.02); // ⬛ New/Risky: 150% – 200%
+    }
+  }, [overallScore]);
+
   function getMaxLoanFromScore(score: number): number {
     if (score >= 700) return 50000;
     if (score >= 500) return 30000;
@@ -140,15 +155,15 @@ export default function BorrowPage() {
 
   function getInterestRate(creditScore: number): number {
     if (creditScore >= 700) {
-      return 3.5 / 12; // 🟩 Elite: 3%–4% → Midpoint = 3.5%
+      return 0.008; // 🟩 Elite
     } else if (creditScore >= 500) {
-      return 6 / 12; // 🟨 Trusted: 5%–7% → Midpoint = 6%
+      return 0.01; // 🟨 Trusted
     } else if (creditScore >= 300) {
-      return 10 / 12; // 🟧 Average: 8%–12% → Midpoint = 10%
+      return 0.013; // 🟧 Average
     } else if (creditScore >= 100) {
-      return 15 / 12; // 🟥 Low: 12%–18% → Midpoint = 15%
+      return 0.016; // 🟥 Low
     } else {
-      return 21.5 / 12; // ⬛ Risky: 18%–25% → Midpoint = 21.5%
+      return 0.02; // ⬛ Risky
     }
   }
 
@@ -205,7 +220,6 @@ export default function BorrowPage() {
       const amount = parseFloat(loanAmount);
       const durationInSeconds = parseInt(loanDuration) * 30 * 24 * 60 * 60;
       const baseInterestRate = selectedPool?.interest_rate;
-      const adjustedInterestRate = getInterestRate(overallScore);
       const requiredCollateral = (amount * collateralRatio) / 100;
 
       const contractAddress = process.env
@@ -291,6 +305,58 @@ export default function BorrowPage() {
       setLoanDuration("");
       setSelectedPool(null);
       setUpdatedInfo(false);
+
+      if (totalBorrowed / getMaxLoanFromScore(overallScore) > 0.9) {
+        try {
+          const res = await fetch("/api/credit-score/over-borrow", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            console.error(data.error || "Failed to apply penalty");
+            return;
+          }
+
+          toast({
+            title: "⚠️ Penalty Applied",
+            description: `${data.reason} (${data.pointsAwarded} points)`,
+            variant: "destructive",
+          });
+        } catch (err) {
+          console.error("Error calling Over-borrowing API:", err);
+        }
+      }
+
+      try {
+        const res = await fetch("/api/credit-score/check-loan-num", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}), // no extra params needed if you get user from session
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error(data.error || "Failed to check high loan frequency");
+          return;
+        }
+
+        if (data.triggeredPunishment) {
+          toast({
+            title: "⚠️ Penalty Applied",
+            description: `${data.reason} (${Math.abs(
+              data.pointsAwarded
+            )} points)`,
+            variant: "destructive",
+          });
+        }
+      } catch (err) {
+        console.error("Error calling high-loan-frequency API:", err);
+      }
+
       setOpenDialog(false);
     } catch (error) {
       toast({
@@ -453,7 +519,7 @@ export default function BorrowPage() {
                                 Adjusted Interest Rate
                               </p>
                               <p className="font-semibold">
-                                {getInterestRate(overallScore).toFixed(2)}%
+                                {adjustedInterestRate}%
                               </p>
                             </div>
                             <div>
@@ -530,9 +596,7 @@ export default function BorrowPage() {
                                 </div>
                                 <div className="flex justify-between">
                                   <span>Interest Rate:</span>
-                                  <span>
-                                    {getInterestRate(overallScore).toFixed(2)}%
-                                  </span>
+                                  <span>{adjustedInterestRate}%</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span>Required Collateral:</span>

@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       ? Number(loan.borrow_duration)
       : Number(loan.borrow_duration ?? 0);
 
-  const totalDue = principal + principal * (ratePct / 100) * months;
+  const totalDue = principal + principal * (ratePct) * months;
 
   // mark repaid
   await prisma.borrow.update({
