@@ -9,29 +9,47 @@ const supabase = createClient(
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
-    if (!email) {
+    const { email, password } = await req.json();
+
+    if (!email || !password) {
       return NextResponse.json(
-        { message: "Email is required." },
+        { message: "Email and password are required." },
         { status: 400 }
       );
     }
 
-    // ✅ Trigger Supabase reset password email
-    const { data, error } = await supabase.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/reset`,
-      },
-    });
+    // 1️⃣ Find the user by email
+    const { data: users, error: listError } =
+      await supabase.auth.admin.listUsers({
+        page: 1,
+        perPage: 1,
+      });
 
-    if (error) {
-      return NextResponse.json({ message: error.message }, { status: 500 });
+    if (listError) {
+      return NextResponse.json({ message: listError.message }, { status: 500 });
+    }
+
+    const user = users?.users?.find((u) => u.email === email);
+
+    if (!user) {
+      return NextResponse.json({ message: "User not found." }, { status: 404 });
+    }
+
+    // 2️⃣ Update the password
+    const { error: updateError } = await supabase.auth.admin.updateUserById(
+      user.id,
+      { password }
+    );
+
+    if (updateError) {
+      return NextResponse.json(
+        { message: updateError.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json(
-      { message: "Reset link sent successfully." },
+      { message: "Password updated successfully." },
       { status: 200 }
     );
   } catch (err) {

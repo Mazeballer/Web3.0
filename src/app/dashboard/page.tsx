@@ -56,6 +56,29 @@ export default function Dashboard() {
   const [collateralRatio, setcollateralRatio] = useState(0);
 
   useEffect(() => {
+    const checkOverdue = async () => {
+      try {
+        const res = await fetch("/api/borrow/check-borrow-status", {
+          method: "POST",
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          console.error("❌ Error:", data.error);
+          return;
+        }
+
+        console.log(✅ ${data.updated} loans marked as late.);
+      } catch (error) {
+        console.error("Error checking overdue loans:", error);
+      }
+    };
+
+    checkOverdue();
+  }, []);
+
+add this in your dashboard
+  useEffect(() => {
     const fetchCreditScore = async () => {
       try {
         const res = await fetch("/api/credit-score/get", {
