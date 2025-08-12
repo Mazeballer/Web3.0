@@ -43,11 +43,6 @@ const reasonMeta = {
     icon: Clock,
     category: "reward",
   },
-  "Full loan repayment": {
-    description: "No missed installments, all paid in full",
-    icon: DollarSign,
-    category: "reward",
-  },
   "3 Consecutive good loans": {
     description: "No late repayment for 3 loans in a row",
     icon: Calculator,
@@ -112,15 +107,9 @@ const improvementTips = [
     difficulty: "Easy",
   },
   {
-    title: "💰 Full loan repayment",
-    description: "No missed installments, all paid in full",
-    impact: "+30",
-    difficulty: "Medium",
-  },
-  {
     title: "🧮 3 Consecutive good loans",
     description: "No late repayment for 3 loans in a row",
-    impact: "+50",
+    impact: "+20",
     difficulty: "Hard",
   },
   {
@@ -164,7 +153,7 @@ const punishmentRules = [
   {
     title: "🔁 High loan frequency",
     description: "More than 2 loans within 30 days",
-    impact: "-20",
+    impact: "-40",
   },
   {
     title: "⚠️ Over-borrowing",

@@ -285,7 +285,7 @@ export default function LendPage() {
           return;
         }
 
-        if (data.meetsRequirement) {
+        if (data.meetsRequirement && !data.alreadyClaimed) {
           toast({
             title: "Congratulations!",
             description: `You've been awarded ${data.addedPoints} points.`,
@@ -554,143 +554,150 @@ export default function LendPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Asset</TableHead>
-                <TableHead>APY</TableHead>
-                <TableHead>Your Deposit</TableHead>
-                <TableHead>Earned</TableHead>
-                <TableHead>Deposit Age</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lendingPools.map((pool) => (
-                <TableRow key={pool.depositId}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{pool.icon || "❓"}</span>
-                      <span className="font-medium">{pool.token}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-emerald-600">
-                      {pool.apy}%
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {pool.yourDeposit} {pool.token}
-                  </TableCell>
-                  <TableCell className="text-emerald-600 font-medium">
-                    +{pool.earned} {pool.token}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {pool.deposited_at
-                        ? formatDistanceToNow(new Date(pool.deposited_at), {
-                            addSuffix: true,
-                          })
-                        : "N/A"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      {address?.toLowerCase() ===
-                      pool.walletAddress.toLowerCase() ? (
-                        <Dialog
-                          open={isWithdrawDialogOpen}
-                          onOpenChange={setIsWithdrawDialogOpen}
-                        >
-                          <DialogTrigger asChild>
+          <div className="overflow-x-auto">
+            <div className="max-h-[800px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Asset</TableHead>
+                    <TableHead>APY</TableHead>
+                    <TableHead>Your Deposit</TableHead>
+                    <TableHead>Earned</TableHead>
+                    <TableHead>Deposit Age</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {lendingPools.map((pool) => (
+                    <TableRow key={pool.depositId}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{pool.icon || "❓"}</span>
+                          <span className="font-medium">{pool.token}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-emerald-600">
+                          {pool.apy}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {pool.yourDeposit} {pool.token}
+                      </TableCell>
+                      <TableCell className="text-emerald-600 font-medium">
+                        +{pool.earned} {pool.token}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {pool.deposited_at
+                            ? formatDistanceToNow(new Date(pool.deposited_at), {
+                                addSuffix: true,
+                              })
+                            : "N/A"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {address?.toLowerCase() ===
+                          pool.walletAddress.toLowerCase() ? (
+                            <Dialog
+                              open={isWithdrawDialogOpen}
+                              onOpenChange={setIsWithdrawDialogOpen}
+                            >
+                              <DialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedPool(pool);
+                                    setIsWithdrawDialogOpen(true);
+                                  }}
+                                >
+                                  <Minus className="h-3 w-3 mr-1" />
+                                  Withdraw
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    Withdraw {selectedPool?.token}
+                                  </DialogTitle>
+                                  <DialogDescription>
+                                    Withdraw your deposited{" "}
+                                    {selectedPool?.token}
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div className="p-4 bg-muted/30 rounded-lg">
+                                    <div className="space-y-2 text-sm">
+                                      <div className="flex justify-between">
+                                        <span>Available:</span>
+                                        <span className="font-medium">
+                                          {selectedPool?.yourDeposit}{" "}
+                                          {selectedPool?.token}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span>Earned:</span>
+                                        <span className="text-emerald-600 font-medium">
+                                          +{selectedPool?.earned}{" "}
+                                          {selectedPool?.token}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="withdraw-amount">
+                                      Withdrawal Amount
+                                    </Label>
+                                    <Input
+                                      id="withdraw-amount"
+                                      placeholder={`Max: ${selectedPool?.yourDeposit}`}
+                                      value={withdrawAmount}
+                                      onChange={(e) =>
+                                        setWithdrawAmount(e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                  <Button
+                                    onClick={handleWithdraw}
+                                    disabled={isPending}
+                                    className="w-full"
+                                  >
+                                    {isPending
+                                      ? "Processing…"
+                                      : "Withdraw Assets"}
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          ) : (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => {
-                                setSelectedPool(pool);
-                                setIsWithdrawDialogOpen(true);
-                              }}
+                              onClick={() =>
+                                toast({
+                                  title: "Wrong wallet",
+                                  description: `Please connect ${pool.walletAddress.slice(
+                                    0,
+                                    6
+                                  )}… to withdraw this deposit.`,
+                                  variant: "destructive",
+                                })
+                              }
                             >
                               <Minus className="h-3 w-3 mr-1" />
                               Withdraw
                             </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-md">
-                            <DialogHeader>
-                              <DialogTitle>
-                                Withdraw {selectedPool?.token}
-                              </DialogTitle>
-                              <DialogDescription>
-                                Withdraw your deposited {selectedPool?.token}
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div className="p-4 bg-muted/30 rounded-lg">
-                                <div className="space-y-2 text-sm">
-                                  <div className="flex justify-between">
-                                    <span>Available:</span>
-                                    <span className="font-medium">
-                                      {selectedPool?.yourDeposit}{" "}
-                                      {selectedPool?.token}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span>Earned:</span>
-                                    <span className="text-emerald-600 font-medium">
-                                      +{selectedPool?.earned}{" "}
-                                      {selectedPool?.token}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div>
-                                <Label htmlFor="withdraw-amount">
-                                  Withdrawal Amount
-                                </Label>
-                                <Input
-                                  id="withdraw-amount"
-                                  placeholder={`Max: ${selectedPool?.yourDeposit}`}
-                                  value={withdrawAmount}
-                                  onChange={(e) =>
-                                    setWithdrawAmount(e.target.value)
-                                  }
-                                />
-                              </div>
-                              <Button
-                                onClick={handleWithdraw}
-                                disabled={isPending}
-                                className="w-full"
-                              >
-                                {isPending ? "Processing…" : "Withdraw Assets"}
-                              </Button>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            toast({
-                              title: "Wrong wallet",
-                              description: `Please connect ${pool.walletAddress.slice(
-                                0,
-                                6
-                              )}… to withdraw this deposit.`,
-                              variant: "destructive",
-                            })
-                          }
-                        >
-                          <Minus className="h-3 w-3 mr-1" />
-                          Withdraw
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

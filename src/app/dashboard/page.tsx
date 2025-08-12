@@ -216,6 +216,28 @@ add this in your dashboard
     collateral: collateralRatio,
   };
 
+  useEffect(() => {
+    const checkOverdue = async () => {
+      try {
+        const res = await fetch("/api/borrow/check-borrow-status", {
+          method: "POST",
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          console.error("❌ Error:", data.error);
+          return;
+        }
+
+        console.log(`✅ ${data.updated} loans marked as late.`);
+      } catch (error) {
+        console.error("Error checking overdue loans:", error);
+      }
+    };
+
+    checkOverdue();
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Hero Section */}

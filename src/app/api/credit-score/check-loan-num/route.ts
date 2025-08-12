@@ -33,8 +33,8 @@ export async function POST(req: Request) {
         },
     });
 
-    if (activeLoanCount >= 2) {
-        const points = -20;
+    if (activeLoanCount > 3) {
+        const points = -40;
         const reason = "High loan frequency";
         const status = "punishment";
 

@@ -1,18 +1,19 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useSession, signOut } from 'next-auth/react';
-import Image from 'next/image';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { useDisconnect } from "wagmi";
+import Image from "next/image";
+import Link from "next/link";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   ArrowRight,
   Shield,
@@ -23,74 +24,74 @@ import {
   Globe,
   CheckCircle,
   Star,
-} from 'lucide-react';
+} from "lucide-react";
 
 const features = [
   {
     icon: Shield,
-    title: 'Trust-Based Lending',
+    title: "Trust-Based Lending",
     description:
-      'Dynamic interest rates based on your on-chain reputation and credit score',
+      "Dynamic interest rates based on your on-chain reputation and credit score",
   },
   {
     icon: TrendingUp,
-    title: 'Competitive APY',
+    title: "Competitive APY",
     description:
-      'Earn up to 12% APY on your crypto assets with our optimized lending pools',
+      "Earn up to 12% APY on your crypto assets with our optimized lending pools",
   },
   {
     icon: Zap,
-    title: 'Instant Liquidity',
+    title: "Instant Liquidity",
     description:
-      'Access funds immediately with our flash loan technology and instant settlements',
+      "Access funds immediately with our flash loan technology and instant settlements",
   },
   {
     icon: Lock,
-    title: 'Secure & Audited',
+    title: "Secure & Audited",
     description:
-      'Smart contracts audited by leading security firms with $100M+ TVL protection',
+      "Smart contracts audited by leading security firms with $100M+ TVL protection",
   },
   {
     icon: Globe,
-    title: 'Multi-Chain Support',
+    title: "Multi-Chain Support",
     description:
-      'Available on Ethereum, Polygon, and Arbitrum with cross-chain compatibility',
+      "Available on Ethereum, Polygon, and Arbitrum with cross-chain compatibility",
   },
   {
     icon: Users,
-    title: 'Community Governed',
+    title: "Community Governed",
     description:
-      'Decentralized governance where token holders vote on protocol upgrades',
+      "Decentralized governance where token holders vote on protocol upgrades",
   },
 ];
 
 const stats = [
-  { label: 'Total Value Locked', value: '$2.4B', change: '+12.5%' },
-  { label: 'Active Users', value: '45K+', change: '+8.2%' },
-  { label: 'Loans Processed', value: '120K+', change: '+15.7%' },
-  { label: 'Average APY', value: '8.5%', change: '+2.1%' },
+  { label: "Total Value Locked", value: "$2.4B", change: "+12.5%" },
+  { label: "Active Users", value: "45K+", change: "+8.2%" },
+  { label: "Loans Processed", value: "120K+", change: "+15.7%" },
+  { label: "Average APY", value: "8.5%", change: "+2.1%" },
 ];
 
 const testimonials = [
   {
-    name: 'Alex Chen',
-    role: 'CreDiFi Trader',
+    name: "Alex Chen",
+    role: "CreDiFi Trader",
     content:
       "CreDiFi's trust score system gave me better rates than any other platform. The UX is incredible.",
     rating: 5,
   },
   {
-    name: 'Sarah Johnson',
-    role: 'Crypto Investor',
+    name: "Sarah Johnson",
+    role: "Crypto Investor",
     content:
       "I've been lending on CreDiFi for 6 months. Consistent returns and zero issues with withdrawals.",
     rating: 5,
   },
   {
-    name: 'Michael Torres',
-    role: 'CreDiFi Developer',
+    name: "Michael Torres",
+    role: "CreDiFi Developer",
     content:
-      'The smart contracts are well-architected and the documentation is top-notch. Highly recommend.',
+      "The smart contracts are well-architected and the documentation is top-notch. Highly recommend.",
     rating: 5,
   },
 ];
@@ -99,9 +100,11 @@ export default function LandingPage() {
   const { data: session } = useSession();
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const { disconnect } = useDisconnect();
 
   const logout = async () => {
-    await signOut({ redirect: true, callbackUrl: '/auth/signin' }); // Optional redirect
+    disconnect();
+    await signOut({ redirect: true, callbackUrl: "/auth/signin" }); // Optional redirect
   };
 
   useEffect(() => {
@@ -288,14 +291,14 @@ export default function LandingPage() {
                 <CardHeader>
                   <div
                     className={`h-12 w-12 rounded-lg flex items-center justify-center mb-4 transition-all duration-300 ${
-                      hoveredFeature === index ? 'gradient-primary' : 'bg-muted'
+                      hoveredFeature === index ? "gradient-primary" : "bg-muted"
                     }`}
                   >
                     <feature.icon
                       className={`h-6 w-6 transition-colors duration-300 ${
                         hoveredFeature === index
-                          ? 'text-white'
-                          : 'text-muted-foreground'
+                          ? "text-white"
+                          : "text-muted-foreground"
                       }`}
                     />
                   </div>
