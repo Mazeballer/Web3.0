@@ -25,17 +25,17 @@ export async function GET(req: Request) {
 
     const now = Date.now();
     const data = user.deposits.map((d) => {
-      // 1️⃣ Pull and normalize values
+      // 1️ Pull and normalize values
       const principal = parseFloat(d.amount.toString());
       const apyBps = Number(d.apy_bps ?? BigInt(0)); // e.g. 200 → 2.00%
       const apyDecimal = apyBps / 10_000;
       const dailyRate = apyDecimal / 365;
 
-      // 2️⃣ Days since original deposit
+      // 2️ Days since original deposit
       const depositedAt = new Date(d.deposited_at).getTime();
       const daysHeld = (now - depositedAt) / (1000 * 60 * 60 * 24);
 
-      // 3️⃣ Compound daily interest
+      // 3️ Compound daily interest
       const earned =
         daysHeld > 0 ? principal * (Math.pow(1 + dailyRate, daysHeld) - 1) : 0;
 
@@ -48,6 +48,8 @@ export async function GET(req: Request) {
         earned: parseFloat(earned.toFixed(4)), // show up to 4 decimals
         deposited_at: d.deposited_at,
         walletAddress: d.wallet_address,
+        availableLiquidity:
+          Number(d.pool.total_liquidity) - Number(d.pool.total_borrowed),
       };
     });
 
