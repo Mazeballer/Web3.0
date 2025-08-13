@@ -28,12 +28,19 @@ import { useAppKit } from "@reown/appkit/react";
 import { useAccount, useBalance } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 
+type Loan = {
+  type: "lend" | "borrow" | "other"; // adjust if you have more
+  amount: number;
+  token: string;
+  status: string;
+};
+
 export default function Dashboard() {
   // appkit hook
   const { open } = useAppKit();
   const { data: session } = useSession();
   const userEmail = session?.user?.email;
-  const [loanHistory, setLoanHistory] = useState([]);
+  const [loanHistory, setLoanHistory] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
 
   // wagmi hooks
@@ -55,29 +62,6 @@ export default function Dashboard() {
   const [totalBorrowed, setTotalBorrowed] = useState(0);
   const [collateralRatio, setcollateralRatio] = useState(0);
 
-  useEffect(() => {
-    const checkOverdue = async () => {
-      try {
-        const res = await fetch("/api/borrow/check-borrow-status", {
-          method: "POST",
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          console.error("❌ Error:", data.error);
-          return;
-        }
-
-        console.log(✅ ${data.updated} loans marked as late.);
-      } catch (error) {
-        console.error("Error checking overdue loans:", error);
-      }
-    };
-
-    checkOverdue();
-  }, []);
-
-add this in your dashboard
   useEffect(() => {
     const fetchCreditScore = async () => {
       try {
@@ -238,6 +222,28 @@ add this in your dashboard
     checkOverdue();
   }, []);
 
+  useEffect(() => {
+    const checkOverdue = async () => {
+      try {
+        const res = await fetch("/api/borrow/check-borrow-status", {
+          method: "POST",
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          console.error("❌ Error:", data.error);
+          return;
+        }
+
+        console.log(`✅ ${data.updated} loans marked as late.`);
+      } catch (error) {
+        console.error("Error checking overdue loans:", error);
+      }
+    };
+
+    checkOverdue();
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Hero Section */}
@@ -301,7 +307,7 @@ add this in your dashboard
                 </div>
                 <div className="flex items-center space-x-2 mt-2">
                   <Progress
-                    value={userData.creditScore / 10}
+                    value={(Number(userData.creditScore) || 0) / 10}
                     className="flex-1"
                   />
                   <Badge variant="secondary">{userData.creditCategory}</Badge>
