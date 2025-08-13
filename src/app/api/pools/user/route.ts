@@ -39,6 +39,8 @@ export async function GET(req: Request) {
       const earned =
         daysHeld > 0 ? principal * (Math.pow(1 + dailyRate, daysHeld) - 1) : 0;
 
+      console.log("Available Liquidity: ", Number(d.pool.total_liquidity) - Number(d.pool.total_borrowed));
+
       return {
         id: d.id,
         depositId: Number(d.onchain_id ?? d.id),

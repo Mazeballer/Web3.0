@@ -83,7 +83,7 @@ export async function POST(req: Request) {
   const alreadyClaimed = await prisma.trustPoint.findFirst({
     where: {
       user_id: user.id,
-      reason: "3 Consecutive good loans",
+      reason: "Consistent lending over 3 months",
       awarded_at: {
         gte: startOfThisMonth,
         lte: endOfThisMonth,
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
       data: {
         user_id: user.id,
         points: 30,
-        reason: "3 Consecutive good loans",
+        reason: "Consistent lending over 3 months",
         status: "reward",
       },
     });

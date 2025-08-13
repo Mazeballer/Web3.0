@@ -58,17 +58,13 @@ export async function POST(req: Request) {
         status = "punishment";
     }
 
-    let absPoint = 0;
-
-    if (status === "punishment") {
-        absPoint = Math.abs(points);
-    }
+    let absPoint = Math.abs(points);
 
     // Save trust point record
     await prisma.trustPoint.create({
         data: {
             user_id: user.id,
-            absPoint,
+            points: absPoint,
             reason,
             status,
         },

@@ -65,7 +65,7 @@ export async function POST() {
             await tx.trustPoint.create({
                 data: {
                     user_id: user.id,
-                    points: 50,
+                    points: 20,
                     reason: "3 Consecutive good loans",
                     status: "reward",
                 },

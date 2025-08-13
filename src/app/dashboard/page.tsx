@@ -128,17 +128,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (creditScore == null) {
-      setcollateralRatio(180); // ⬛ New/Risky: 150% – 200%
+      setcollateralRatio(200); // ⬛ New/Risky: 150% – 200%
     } else if (creditScore >= 700) {
-      setcollateralRatio(50); // 🟩 Elite: 50% – 75%
+      setcollateralRatio(150); // 🟩 Elite: 50% – 75%
     } else if (creditScore >= 500) {
-      setcollateralRatio(75); // 🟨 Trusted: 75% – 100%
+      setcollateralRatio(160); // 🟨 Trusted: 75% – 100%
     } else if (creditScore >= 300) {
-      setcollateralRatio(100); // 🟧 Average: 100%
+      setcollateralRatio(175); // 🟧 Average: 100%
     } else if (creditScore >= 100) {
-      setcollateralRatio(150); // 🟥 Low: 120% – 150%
+      setcollateralRatio(190); // 🟥 Low: 120% – 150%
     } else {
-      setcollateralRatio(180); // ⬛ New/Risky: 150% – 200%
+      setcollateralRatio(200); // ⬛ New/Risky: 150% – 200%
     }
   }, [creditScore]);
 

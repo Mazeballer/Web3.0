@@ -28,7 +28,6 @@ export async function POST(req: Request) {
     const activeLoanCount = await prisma.borrow.count({
         where: {
             user_id: user.id,
-            status: { not: "completed" },
             borrowed_at: { gte: thirtyDaysAgo },
         },
     });

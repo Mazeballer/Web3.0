@@ -26,7 +26,7 @@ import {
   DollarSign,
   Calculator,
   UserCheck,
-  Bank,
+  Banknote,
   Users,
   Repeat,
   CircleSlash,
@@ -61,7 +61,7 @@ const reasonMeta = {
   },
   "Consistent lending over 3 months": {
     description: "Minimum monthly lending activity for 3 months",
-    icon: Bank,
+    icon: Banknote,
     category: "reward",
   },
   "No withdrawal from lending pool ≥ 60 days": {

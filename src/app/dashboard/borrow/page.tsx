@@ -153,20 +153,6 @@ export default function BorrowPage() {
     return 5000; // for score 0–99
   }
 
-  function getInterestRate(creditScore: number): number {
-    if (creditScore >= 700) {
-      return 0.008; // 🟩 Elite
-    } else if (creditScore >= 500) {
-      return 0.01; // 🟨 Trusted
-    } else if (creditScore >= 300) {
-      return 0.013; // 🟧 Average
-    } else if (creditScore >= 100) {
-      return 0.016; // 🟥 Low
-    } else {
-      return 0.02; // ⬛ Risky
-    }
-  }
-
   const [selectedPool, setSelectedPool] = useState<
     (typeof lendingPools)[0] | null
   >(null);
@@ -174,6 +160,38 @@ export default function BorrowPage() {
   const [collateralToken, setCollateralToken] = useState("");
   const [loanDuration, setLoanDuration] = useState("");
   const [totalBorrowed, setTotalBorrowed] = useState(0);
+  const [checkTotalBorrowed, setCheckTotalBorrowed] = useState(false);
+
+  useEffect(() => {
+    async function fetchOverBorrowedAPI() {
+      if (totalBorrowed / getMaxLoanFromScore(overallScore) > 0.9) {
+        try {
+          const res = await fetch("/api/credit-score/over-borrow", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            console.error(data.error || "Failed to apply penalty");
+            return;
+          }
+
+          toast({
+            title: "⚠️ Penalty Applied",
+            description: `${data.reason} (${data.pointsAwarded} points)`,
+            variant: "destructive",
+          });
+        } catch (err) {
+          console.error("Error calling Over-borrowing API:", err);
+        }
+      }
+    }
+
+    fetchOverBorrowedAPI();
+    setUpdatedInfo(false);
+  }, [checkTotalBorrowed]);
 
   const { writeContractAsync, isPending } = useContractWrite({
     mutation: {
@@ -305,30 +323,6 @@ export default function BorrowPage() {
       setLoanDuration("");
       setSelectedPool(null);
 
-      if (totalBorrowed / getMaxLoanFromScore(overallScore) > 0.9) {
-        try {
-          const res = await fetch("/api/credit-score/over-borrow", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-          });
-
-          const data = await res.json();
-
-          if (!res.ok) {
-            console.error(data.error || "Failed to apply penalty");
-            return;
-          }
-
-          toast({
-            title: "⚠️ Penalty Applied",
-            description: `${data.reason} (${data.pointsAwarded} points)`,
-            variant: "destructive",
-          });
-        } catch (err) {
-          console.error("Error calling Over-borrowing API:", err);
-        }
-      }
-
       try {
         const res = await fetch("/api/credit-score/check-loan-num", {
           method: "POST",
@@ -357,6 +351,7 @@ export default function BorrowPage() {
       }
 
       setUpdatedInfo(false);
+      setCheckTotalBorrowed(true);
       setOpenDialog(false);
     } catch (error) {
       toast({
@@ -440,7 +435,7 @@ export default function BorrowPage() {
               ${totalBorrowed.toLocaleString()}
             </div>
             <Progress
-              value={totalBorrowed / getMaxLoanFromScore(overallScore)}
+              value={(totalBorrowed / getMaxLoanFromScore(overallScore)) * 100}
               className="mt-2"
             />
           </CardContent>
