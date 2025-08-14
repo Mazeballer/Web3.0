@@ -1,113 +1,45 @@
-# Web3.0 (ChainTrust / DeFiLend) - Decentralized Lending PWA
+# Blockchain Assignment
 
-Welcome to **Web3.0**, a Progressive Web App for transparent, peer‑to‑peer lending and borrowing built with Next.js, Prisma, and Supabase.
+## Setup
 
-## 🚀 Getting Started
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/Mazeballer/Web3.0.git
-cd Web3.0
-```
-
-### 2. Install Dependencies
-
-Make sure you have **Node.js (v18+)** and **pnpm** installed globally:
-
-```bash
-npm install -g pnpm
-```
-
-Then, from the project root:
+### 1. Installation
 
 ```bash
 pnpm install
-```
+pnpm add -D concurrently
+pnpm add -D @types/bcrypt
 
-### 3. Environment Variables
+## 2. Enviroment Variables
 
-Copy the example environment file and fill in your Supabase credentials:
+DATABASE_URL="postgresql://postgres:12345678@db.pqswcnymtyetoxcddcxq.supabase.co:5432/postgres"
+NEXT_PUBLIC_REOWN_PROJECT_ID=32e0d35ed9123bf7197e4f81e2c93c49
+GOOGLE_CLIENT_ID=1059053086837-km8t0a82o65dvujhqbgqe510fmvk8hq5.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
+NEXTAUTH_SECRET=HnpmyNvXXAwPg8h4JJEVMgw+kIaZ1udhuwccZQOgNQQ=
+NEXTAUTH_URL=http://localhost:3000
+NEXT_PUBLIC_SUPABASE_URL=https://pqswcnymtyetoxcddcxq.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxc3djbnltdHlldG94Y2RkY3hxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDc1MzE3NSwiZXhwIjoyMDY2MzI5MTc1fQ.nPgLbu6cOHaMB7WGcbufb7M6kef14SKhV8iIBu_J2gc
+NEXT_PUBLIC_LENDING_POOL_ADDRESS=0x5fbdb2315678afecb367f032d93f642f64180aa3
 
-```bash
-cp .env.example .env
-```
+## 3. Prisma (Database)
 
-In `.env`, set your Supabase direct connection string:
+npx prisma db pull
+npx prisma generate
 
-```env
-DATABASE_URL="postgresql://postgres:<PASSWORD>@<HOST>.supabase.co:5432/postgres"
-NEXT_PUBLIC_SUPABASE_URL="https://<PROJECT_REF>.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="<ANON_KEY>"
-```
+## 4. Local Hardhat
 
-### 4. Prisma Setup
+1. Install Hardhat
+npm install --save-dev hardhat
 
-Generate the Prisma client and push the schema to Supabase:
+2. Open hardhat.config.ts and comment out line 2
+// import "./scripts/deploy-viem";
 
-```bash
-pnpm prisma generate
-pnpm prisma db push
-```
+3. Compile and start the Hardhat node
+npx hardhat compile
+npx hardhat node
 
-### 5. Development
+4. npx hardhat deploy-lendingPool --network localhost
 
-Start the development server (PWA features disabled in dev mode):
-
-```bash
+## 5. Start the App
 pnpm dev
 ```
-
-Open your browser at [http://localhost:3000](http://localhost:3000).
-
-### 6. Production Preview (PWA Enabled)
-
-Build and run in production mode to test offline support and installability:
-
-```bash
-pnpm build
-pnpm start
-```
-
-Then visit [http://localhost:3000](http://localhost:3000) and verify in DevTools → Application:
-
-* Manifest is loaded
-* Service worker (`/sw.js`) is registered
-* App is installable and works offline
-
----
-
-## 🗂️ Project Structure
-
-```text
-├── app/                Next.js App Router pages & layouts
-├── components/         React components (UI, theme, wallet-provider)
-├── prisma/             Prisma schema & migrations
-├── public/             Static assets, PWA icons, manifest.json, sw.js
-├── styles/             Global CSS (globals.css)
-├── next.config.mjs     Next.js config with PWA support
-├── package.json
-├── pnpm-lock.yaml
-├── .env.example        Example environment variables
-└── README.md           This file
-```
-
-## 📦 Available Scripts
-
-* `pnpm dev`               — Start the development server
-* `pnpm build`             — Build for production
-* `pnpm start`             — Run the production server
-* `pnpm prisma generate`   — Generate Prisma client
-* `pnpm prisma db push`    — Sync schema to Supabase
-
-## 🤝 Contributing
-
-1. Fork the repository.
-2. Create a feature branch: `git checkout -b feature/YourFeature`
-3. Commit your changes: `git commit -m "feat: Add ..."`
-4. Push to your branch: `git push origin feature/YourFeature`
-5. Open a Pull Request and describe your changes.
-
----
-
-*Happy building!*
