@@ -86,7 +86,15 @@ export default function SignUpPage() {
     }
   };
 
-  function validateStep1() {
+  async function checkExists(field: string, value: string) {
+    const res = await fetch(
+      `/api/check-exists?field=${field}&value=${encodeURIComponent(value)}`
+    );
+    const data = await res.json();
+    return data.exists; // true if record exists
+  }
+
+  async function validateStep1() {
     if (
       !formData.firstName.trim() ||
       !formData.lastName.trim() ||
@@ -102,6 +110,23 @@ export default function SignUpPage() {
       });
       return false;
     }
+
+    // Duplicate check
+    if (await checkExists("email", formData.email)) {
+      toast({
+        title: "Email Taken",
+        description: "This email is already registered.",
+      });
+      return false;
+    }
+    if (await checkExists("phone", formData.phone)) {
+      toast({
+        title: "Phone Taken",
+        description: "This phone number is already registered.",
+      });
+      return false;
+    }
+
     if (
       !formData.google_signin &&
       formData.password !== formData.confirmPassword
@@ -116,7 +141,7 @@ export default function SignUpPage() {
   }
 
   // Validate Step 2: Verification
-  function validateStep2() {
+  async function validateStep2() {
     if (
       !formData.address.trim() ||
       !formData.city.trim() ||
@@ -130,6 +155,15 @@ export default function SignUpPage() {
       toast({
         title: "Missing Fields",
         description: "Please fill in all required fields for Verification.",
+      });
+      return false;
+    }
+
+    // Duplicate check
+    if (await checkExists("idNumber", formData.idNumber)) {
+      toast({
+        title: "ID Number Taken",
+        description: "This ID has been usewd to create an account already.",
       });
       return false;
     }
@@ -175,7 +209,6 @@ export default function SignUpPage() {
     }
     setIsLoading(true);
     try {
-      // ✅ Force correct google_signin before submission
       const payload = {
         ...formData,
         google_signin: formData.google_signin || (session?.user ? true : false),
@@ -458,7 +491,7 @@ export default function SignUpPage() {
                   />
                 </div>
 
-                {!formData.google_signin && (
+                {
                   <>
                     <div className="flex flex-col relative">
                       <label className="text-sm text-gray-300 mb-1">
@@ -581,7 +614,7 @@ export default function SignUpPage() {
                       </button>
                     </div>
                   </>
-                )}
+                }
               </div>
 
               <Button
