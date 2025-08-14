@@ -29,7 +29,7 @@ import { useAccount, useBalance } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 
 type Loan = {
-  type: "lend" | "borrow" | "other"; // adjust if you have more
+  type: "lend" | "borrow" | "other";
   amount: number;
   token: string;
   status: string;
@@ -178,7 +178,7 @@ export default function Dashboard() {
         const data = await res.json();
         // sort by date if your API returns a date field
 
-        setLoanHistory(data.slice(0, 3)); // top 3 most recent
+        setLoanHistory(data); // top 3 most recent
       } catch (err) {
         console.error("Failed to fetch loan history", err);
       } finally {
@@ -188,6 +188,10 @@ export default function Dashboard() {
 
     fetchLoanHistory();
   }, []);
+
+  const activeLoans = loanHistory.filter(
+    (loan) => loan.status === "active" || loan.status === "late"
+  ).length;
 
   const userData = {
     creditScore: creditScore ?? "Loading..",
@@ -328,7 +332,7 @@ export default function Dashboard() {
                   ${userData.totalBorrowed.toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Across 3 active loans
+                  Across {activeLoans} active loans
                 </p>
               </CardContent>
             </Card>
@@ -345,9 +349,6 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold">
                   ${userData.totalLent?.toLocaleString()}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Earning 8.5% APY
-                </p>
               </CardContent>
             </Card>
           </div>

@@ -34,39 +34,57 @@ export async function POST(req: Request) {
       google_signin = false,
     } = data;
 
-    // Step 1: Check if email exists
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
+    // Step 1: Check duplicates for email, phone, idNumber
+    const [existingEmail, existingPhone, existingId] = await Promise.all([
+      prisma.user.findUnique({ where: { email } }),
+      prisma.user.findFirst({ where: { phone } }),
+      prisma.user.findFirst({ where: { id_number: idNumber } }),
+    ]);
+
+    if (existingEmail) {
       return NextResponse.json(
-        { message: "User already exists" },
+        { message: "Email already exists" },
+        { status: 400 }
+      );
+    }
+    if (existingPhone) {
+      return NextResponse.json(
+        { message: "Phone number already exists" },
+        { status: 400 }
+      );
+    }
+    if (existingId) {
+      return NextResponse.json(
+        { message: "ID number already exists" },
         { status: 400 }
       );
     }
 
-    // Step 2: Register user with Supabase Auth
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp(
-      {
-        email,
-        password,
-        options: {
-          data: {
-            firstName,
-            lastName,
+    // Step 2: Register user with Supabase Auth (only if not Google sign-in)
+    if (!google_signin) {
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              firstName,
+              lastName,
+            },
+            emailRedirectTo: "http://localhost:3000/auth/confirm",
           },
-          emailRedirectTo: "http://localhost:3000/auth/confirm",
-        },
-      }
-    );
+        });
 
-    if (signUpError || !signUpData?.user?.id) {
-      return NextResponse.json(
-        { message: signUpError?.message || "Signup failed" },
-        { status: 400 }
-      );
+      if (signUpError || !signUpData?.user?.id) {
+        return NextResponse.json(
+          { message: signUpError?.message || "Signup failed" },
+          { status: 400 }
+        );
+      }
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     // Step 3: Save extra user details in Prisma
     const user = await prisma.user.create({
@@ -108,7 +126,6 @@ export async function POST(req: Request) {
     );
   } catch (err: any) {
     console.error("❌ Signup API error:", err);
-
     return NextResponse.json(
       { message: "Internal Server Error", details: err.message },
       { status: 500 }
