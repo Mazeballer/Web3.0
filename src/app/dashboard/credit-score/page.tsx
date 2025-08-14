@@ -128,13 +128,13 @@ const improvementTips = [
   {
     title: "🏦 Consistent lending over 3 months",
     description: "Minimum monthly lending activity for 3 months",
-    impact: "+60",
+    impact: "+30",
     difficulty: "Hard",
   },
   {
     title: "🔐 No withdrawal from lending pool ≥ 60 days",
     description: "Passive, long-term lending support",
-    impact: "+35",
+    impact: "+20",
     difficulty: "Medium",
   },
 ];
@@ -401,7 +401,10 @@ export default function CreditScorePage() {
                       </div>
                     </div>
                   </div>
-                  <Progress value={factor.points} className="h-2" />
+                  <Progress
+                    value={(factor.points / overallScore) * 100}
+                    className="h-2"
+                  />
                 </div>
               ))}
             </div>

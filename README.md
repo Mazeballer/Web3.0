@@ -5,6 +5,8 @@
 ### 1. Installation
 
 ```bash
+go into Web3.0 folder first using cd Web3.0
+
 pnpm install
 pnpm add -D concurrently
 pnpm add -D @types/bcrypt
@@ -27,6 +29,8 @@ npx prisma db pull
 npx prisma generate
 
 ## 4. Local Hardhat
+
+Go into Hardhat-APU folder first using cd Hardhat-APU
 
 1. Install Hardhat
    npm install --save-dev hardhat
@@ -94,7 +98,7 @@ _________________________________________
 | 500 – 699          | 🟨 Trusted | 4%  |
 | 300 – 499          | 🟧 Average | 6%  |
 | 100 – 299          | 🟥 Low     | 8%  |
-| 0 – 99             | ⬛ Risky   | 10% |
+| 0 – 99             | ⬛ New     | 10% |
 ------------------------------------------
 ---
 
@@ -124,8 +128,8 @@ ________________________________________________________________________________
 | Title                                        | Description                                                   | Points |
 | -------------------------------------------- | ------------------------------------------------------------- | ------ |
 | 💹 Lending funds ≥ 30 days                   | Funds locked for lending pool without withdrawal for 30+ days | +15    |
-| 🏦 Consistent lending over 3 months          | Minimum monthly lending activity for 3 months                 | +60    |
-| 🔐 No withdrawal from lending pool ≥ 60 days | Passive, long-term lending support                            | +35    |
+| 🏦 Consistent lending over 3 months          | Minimum monthly lending activity for 3 months                 | +30    |
+| 🔐 No withdrawal from lending pool ≥ 60 days | Passive, long-term lending support                            | +20    |
 | 💸 Early withdrawal from lending pool        | User removes funds from the pool before 30 days               | -20    |
 -------------------------------------------------------------------------------------------------------------------------
 ---
@@ -145,7 +149,7 @@ ________________________________________________________________________________
 | 500 – 699          | 🟨 Trusted | 160                  | 1.0%                               | 30,000         |
 | 300 – 499          | 🟧 Average | 175                  | 1.3%                               | 15,000         |
 | 100 – 299          | 🟥 Low     | 190                  | 1.6%                               | 10,000         |
-| 0 – 99             | ⬛ Risky   | 200                  | 2.0%                               | 5,000          |
+| 0 – 99             | ⬛ New     | 200                  | 2.0%                               | 5,000          |
 ----------------------------------------------------------------------------------------------------------------
 ---
 
