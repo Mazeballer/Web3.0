@@ -89,9 +89,11 @@ ______________________________________________________________________
 ### 2. Lend Logic Based on Credit Score
 
 ```bash
+The lending page allows users to lend their crypto to CreDiFi in exchange for APY rewards.
 _Lending and Withdrawing Rule:_
 Users must use the _same wallet address_ that was used to deposit in order to withdraw the loans.
 
+APY based on user credit score
 ---
 _________________________________________
 | Credit Score Range | Tier       | APY |
@@ -140,9 +142,11 @@ ________________________________________________________________________________
 ### 3. Borrow and Repayment Logic Based on Credit Score
 
 ```bash
+This allows users to borrow crypto from CreDiFi and manage loan repayments.
 _Repayment Rule:_
 Users must use the _same wallet address_ that was used to borrow the loan in order to make repayments.
 
+Collateral ratio and interest rate are determined based on the user's credit score.
 ---
 ________________________________________________________________________________________________________________
 | Credit Score Range | Tier       | Collateral Ratio (%) | Adjusted Interest Rate (per month) | Max Loan (USD) |
