@@ -82,6 +82,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/next-auth": "^3.15.0",
     "@types/node": "^22",
     "@types/react": "^19",

@@ -28,6 +28,8 @@ NEXT_PUBLIC_LENDING_POOL_ADDRESS=0x5fbdb2315678afecb367f032d93f642f64180aa3
 npx prisma db pull
 npx prisma generate
 
+** If there are errors connecting to supabase due to Wifi restriction, use mobile hotspot
+
 ## 4. Local Hardhat
 
 Go into Hardhat-APU folder first using cd Hardhat-APU
@@ -45,7 +47,7 @@ Go into Hardhat-APU folder first using cd Hardhat-APU
 4. Uncomment line 2
    import "./scripts/deploy-viem";
 
-5. this is also to get NEXT_PUBLIC_LENDING_POOL_ADDRESS
+5. This is also to get NEXT_PUBLIC_LENDING_POOL_ADDRESS (in a new terminal)
 npx hardhat deploy-lendingPool --network localhost
 
 ## 5. Add Local Blockchain in Metamask
@@ -94,11 +96,11 @@ Users must use the _same wallet address_ that was used to deposit in order to wi
 _________________________________________
 | Credit Score Range | Tier       | APY |
 | ------------------ | ---------- | --- |
-| 700 – 850          | 🟩 Elite   | 2%  |
-| 500 – 699          | 🟨 Trusted | 4%  |
-| 300 – 499          | 🟧 Average | 6%  |
-| 100 – 299          | 🟥 Low     | 8%  |
-| 0 – 99             | ⬛ New     | 10% |
+| 700 – 850          | 🟩 Elite   | 9%  |
+| 500 – 699          | 🟨 Trusted | 7%  |
+| 300 – 499          | 🟧 Average | 5%  |
+| 100 – 299          | 🟥 Low     | 3%  |
+| 0 – 99             | ⬛ New     | 2%  |
 ------------------------------------------
 ---
 
